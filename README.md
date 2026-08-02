@@ -15,6 +15,15 @@ https://github.com/Klerith/fernando-skills
 npx skills@latest add Klerith/fernando-skills
 ```
 
+## Variables de entorno
+
+Copiar `.env.template` a `.env.local` y completar:
+
+- `RESEND_API_KEY` — API key de [Resend](https://resend.com), usada para enviar el correo del formulario de contacto (`/about`).
+- `CONTACT_EMAIL` — correo destinatario de los mensajes de contacto.
+
+Sin estas variables, `POST /api/contact` responde `500`.
+
 ## Commands
 
 ```bash
