@@ -26,4 +26,9 @@ Sin estas variables, `POST /api/contact` responde `500`.
 
 ## Commands
 
-## Hola Mundo
+```bash
+npm run dev     # start dev server (Turbopack)
+npm run build   # production build
+npm run start   # run production build
+npm run lint    # eslint (flat config, eslint.config.mjs)
+```
