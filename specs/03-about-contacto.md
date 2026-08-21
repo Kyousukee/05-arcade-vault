@@ -1,6 +1,6 @@
 # Spec 03 — About + envío de correo
 
-**Estado:** Approved
+**Estado:** Implemented
 **Depende de:** 02-home-y-biblioteca
 **Fecha:** 2026-07-23
 
