@@ -1,6 +1,6 @@
 # Spec 04 — Integración de Supabase
 
-**Estado:** Aprobado
+**Estado:** Implementado
 **Depende de:** 03-about-contacto
 **Fecha:** 2026-08-22
 
