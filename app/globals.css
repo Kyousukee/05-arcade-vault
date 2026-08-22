@@ -609,6 +609,44 @@ a { color: inherit; text-decoration: none; }
 .hud-stat.level .v { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
 .hud-actions { display: flex; gap: 10px; }
 
+/* Indicador de potenciador: solo visible mientras el disparo triple está activo */
+.hud-stat.power .v {
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(0,245,255,0.85);
+  animation: power-pulse 0.9s ease-in-out infinite;
+}
+@keyframes power-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* Canvas de los juegos reales: llena la pantalla del CRT, que ya es 4:3 */
+.crt-screen .game-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  image-rendering: auto;
+  touch-action: none;
+}
+
+/* Aviso de teclado: oculto salvo en pantallas pequeñas o sin puntero fino */
+.keyboard-notice { display: none; }
+@media (max-width: 720px), (pointer: coarse) {
+  .keyboard-notice {
+    display: block;
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--ink-dim);
+    font-size: 10px;
+    line-height: 1.7;
+    letter-spacing: 0.14em;
+    text-align: center;
+  }
+}
+
 .crt {
   position: relative;
   border-radius: 28px;

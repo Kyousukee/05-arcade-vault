@@ -82,6 +82,17 @@ export const GAMES: Game[] = [
     plays: "15.6K",
   },
   {
+    id: "asteroides",
+    title: "ASTEROIDES",
+    short: "Rota, propulsa y fragmenta rocas en el vacío.",
+    long: "Vectores blancos sobre negro absoluto. Tu nave gira, acelera por inercia y dispara contra rocas que se parten en fragmentos más veloces. El espacio es toroidal: lo que sale por un borde vuelve por el opuesto. Recoge el núcleo cian para disparo triple.",
+    cat: "SHOOTER",
+    cover: "cover-rocas",
+    color: "cyan",
+    best: 0,
+    plays: "0",
+  },
+  {
     id: "ranaria",
     title: "RANARIA",
     short: "Cruza la autopista de pixeles.",
