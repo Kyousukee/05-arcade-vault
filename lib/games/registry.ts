@@ -1,6 +1,6 @@
 // ===== registry.ts — juegos reales montables en el reproductor =====
 //
-// El id es el mismo de GAMES (lib/data.ts). El import() dinámico mantiene el
+// El id es el mismo de la tabla `games` en Supabase. El import() dinámico mantiene el
 // código del juego fuera del bundle de las rutas que no lo usan.
 import type { GameFactory } from "./types";
 export const GAME_REGISTRY: Record<string, () => Promise<GameFactory>> = {

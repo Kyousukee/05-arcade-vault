@@ -1,14 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { GAMES, seededScores, type Game } from "@/lib/data";
+import type { Game, ScoreRow } from "@/lib/data";
 
-function hashSeed(id: string): number {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 100000;
-  return h + 1;
-}
 
 function useReveal() {
   useEffect(() => {
@@ -184,16 +179,37 @@ const FEATURES = [
   { i: "ROCKET", t: "SIEMPRE CRECIENDO", d: "Agregamos nuevos juegos constantemente. Vuelve seguido, siempre habrá algo nuevo que jugar.", c: "green" },
 ];
 
-const TICKER = GAMES.slice(0, 7).map((g) => {
-  const row = seededScores(hashSeed(g.id), 1)[0];
-  return { player: row.name, gameTitle: g.title, score: row.score, color: g.color };
-});
-
-const TOP_PLAYERS = seededScores(hashSeed(GAMES[0].id), 5);
-
-export default function Home() {
+export default function Home({
+  games,
+  scoresByGame,
+}: {
+  games: Game[];
+  scoresByGame: Record<string, ScoreRow[]>;
+}) {
   const router = useRouter();
   useReveal();
+
+  /** Mejor marca de los primeros juegos, para el ticker de actividad. */
+  const ticker = useMemo(
+    () =>
+      games
+        .slice(0, 7)
+        .map((g) => ({ game: g, row: (scoresByGame[g.id] ?? [])[0] }))
+        .filter((t) => t.row)
+        .map((t) => ({ player: t.row.name, gameTitle: t.game.title, score: t.row.score, color: t.game.color })),
+    [games, scoresByGame],
+  );
+
+  /** Los 5 mejores puntajes de toda la plataforma. */
+  const topPlayers = useMemo(
+    () =>
+      Object.values(scoresByGame)
+        .flat()
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5)
+        .map((r, i) => ({ ...r, rank: i + 1 })),
+    [scoresByGame],
+  );
 
   return (
     <div className="home fade-in">
@@ -247,7 +263,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* GAMES PREVIEW */}
+      {/* JUEGOS DISPONIBLES */}
       <section className="home-section reveal">
         <div className="section-head">
           <div className="kicker pixel neon-cyan">// 02</div>
@@ -255,7 +271,7 @@ export default function Home() {
           <div className="section-rule"></div>
         </div>
         <div className="mini-rail">
-          {GAMES.slice(0, 6).map((g) => (
+          {games.slice(0, 6).map((g) => (
             <MiniCard key={g.id} game={g} onClick={() => router.push(`/game/${g.id}`)} />
           ))}
         </div>
@@ -270,7 +286,7 @@ export default function Home() {
       <section className="home-stats reveal">
         <div className="stats-inner">
           {[
-            { n: `${GAMES.length}+`, u: "JUEGOS", s: "Y CONTANDO" },
+            { n: `${games.length}+`, u: "JUEGOS", s: "Y CONTANDO" },
             { n: "MILES", u: "DE PARTIDAS", s: "JUGADAS CADA DÍA" },
             { n: "GLOBAL", u: "RANKING", s: "COMPITE CON EL MUNDO" },
           ].map((st, i) => (
@@ -296,7 +312,7 @@ export default function Home() {
               <div className="ac-title pixel">▸ ÚLTIMAS PUNTUACIONES</div>
             </div>
             <div className="ticker">
-              {TICKER.map((r, i) => (
+              {ticker.map((r, i) => (
                 <div key={i} className="tick-row" style={{ animationDelay: i * 60 + "ms" }}>
                   <span className={"tk-p neon-" + r.color}>{r.player}</span>
                   <span className="tk-mid">▸ {r.gameTitle}</span>
@@ -314,7 +330,7 @@ export default function Home() {
               </button>
             </div>
             <div className="top-list">
-              {TOP_PLAYERS.map((r, i) => (
+              {topPlayers.map((r, i) => (
                 <div key={i} className={"top-row" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")}>
                   <span className="tp-rk">#{String(r.rank).padStart(2, "0")}</span>
                   <span className="tp-bar">
