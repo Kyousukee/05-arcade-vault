@@ -23,7 +23,10 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   const [saveError, setSaveError] = useState("");
   // Estado mostrado en el HUD: del juego real, o del simulador.
   const score = isReal ? (gameState?.score ?? 0) : mockScore;
-  const lives = isReal ? (gameState?.lives ?? 3) : 3;
+  // `undefined` = el juego no tiene vidas (Caída) y el HUD no muestra ese stat.
+  const lives = isReal ? gameState?.lives : 3;
+  // Solo los juegos que llevan la cuenta de líneas publican `lines` (Caída).
+  const lines = isReal ? gameState?.lines : undefined;
   const level = isReal ? (gameState?.level ?? 1) : mockLevel;
   const paused = isReal ? gameState?.phase === "paused" : mockPaused;
   const tripleShot = isReal ? (gameState?.tripleShot ?? 0) : 0;
@@ -152,10 +155,18 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
             <div className="l">Puntuación</div>
             <div className="v">{score.toLocaleString("es-ES")}</div>
           </div>
-          <div className="hud-stat lives">
-            <div className="l">Vidas</div>
-            <div className="v">{"♥ ".repeat(lives).trim() || "—"}</div>
-          </div>
+          {lives !== undefined && (
+            <div className="hud-stat lives">
+              <div className="l">Vidas</div>
+              <div className="v">{"♥ ".repeat(lives).trim() || "—"}</div>
+            </div>
+          )}
+          {lines !== undefined && (
+            <div className="hud-stat lines">
+              <div className="l">Líneas</div>
+              <div className="v">{lines.toLocaleString("es-ES")}</div>
+            </div>
+          )}
           <div className="hud-stat level">
             <div className="l">Nivel</div>
             <div className="v">{String(level).padStart(2, "0")}</div>
