@@ -5,9 +5,16 @@ export type GamePhase = "playing" | "paused" | "dead" | "gameover";
 /** Estado que el juego publica al HUD React. */
 export interface GameState {
   score: number;
-  lives: number;
   level: number;
   phase: GamePhase;
+  /**
+   * Vidas restantes. Opcional: hay juegos sin vidas (Caída), y su ausencia es la
+   * señal de que el HUD no debe mostrar ese stat. Publicar 0 no serviría:
+   * ocultaría el stat en Asteroides justo al perder la última vida.
+   */
+  lives?: number;
+  /** Líneas eliminadas. Solo lo publican los juegos que llevan la cuenta (Caída). */
+  lines?: number;
   /** Segundos restantes de disparo triple; 0 si no está activo. */
   tripleShot: number;
 }

@@ -5,6 +5,7 @@
 import type { GameFactory } from "./types";
 export const GAME_REGISTRY: Record<string, () => Promise<GameFactory>> = {
   asteroides: async () => (await import("./asteroids/game")).createAsteroidsGame,
+  caida: async () => (await import("./tetris/game")).createCaidaGame,
 };
 /** true si el id tiene un juego real; si no, el reproductor usa el simulador. */
 export function hasRealGame(id: string): boolean {
