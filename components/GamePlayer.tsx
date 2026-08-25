@@ -27,6 +27,8 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   const lives = isReal ? gameState?.lives : 3;
   // Solo los juegos que llevan la cuenta de líneas publican `lines` (Caída).
   const lines = isReal ? gameState?.lines : undefined;
+  // Solo los juegos que cuentan frutas publican `fruits` (Serpentina).
+  const fruits = isReal ? gameState?.fruits : undefined;
   const level = isReal ? (gameState?.level ?? 1) : mockLevel;
   const paused = isReal ? gameState?.phase === "paused" : mockPaused;
   const tripleShot = isReal ? (gameState?.tripleShot ?? 0) : 0;
@@ -165,6 +167,12 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
             <div className="hud-stat lines">
               <div className="l">Líneas</div>
               <div className="v">{lines.toLocaleString("es-ES")}</div>
+            </div>
+          )}
+          {fruits !== undefined && (
+            <div className="hud-stat fruits">
+              <div className="l">Frutas</div>
+              <div className="v">{fruits.toLocaleString("es-ES")}</div>
             </div>
           )}
           <div className="hud-stat level">
