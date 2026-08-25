@@ -1,7 +1,5 @@
 // ===== types.ts — contrato que todo juego real debe cumplir para montarse =====
-
 export type GamePhase = "playing" | "paused" | "dead" | "gameover";
-
 /** Estado que el juego publica al HUD React. */
 export interface GameState {
   score: number;
@@ -15,10 +13,11 @@ export interface GameState {
   lives?: number;
   /** Líneas eliminadas. Solo lo publican los juegos que llevan la cuenta (Caída). */
   lines?: number;
+  /** Frutas comidas en la partida. Solo lo publican los juegos que las cuentan (Serpentina). */
+  fruits?: number;
   /** Segundos restantes de disparo triple; 0 si no está activo. */
   tripleShot: number;
 }
-
 /** Handle que el reproductor usa para controlar la partida desde el HUD. */
 export interface GameInstance {
   pause(): void;
@@ -29,7 +28,6 @@ export interface GameInstance {
   /** Cancela el rAF y quita listeners y ResizeObserver. */
   destroy(): void;
 }
-
 export interface GameMountOptions {
   canvas: HTMLCanvasElement;
   /** Se invoca a ~10 Hz, no en cada frame, para no re-renderizar React a 60 fps. */
@@ -37,5 +35,4 @@ export interface GameMountOptions {
   /** Se invoca una vez, tras el overlay GAME OVER del canvas. */
   onGameOver: (finalScore: number) => void;
 }
-
 export type GameFactory = (opts: GameMountOptions) => GameInstance;

@@ -7,6 +7,7 @@ export const GAME_REGISTRY: Record<string, () => Promise<GameFactory>> = {
   asteroides: async () => (await import("./asteroids/game")).createAsteroidsGame,
   caida: async () => (await import("./tetris/game")).createCaidaGame,
   "bloque-buster": async () => (await import("./arkanoid/game")).createBloqueBusterGame,
+  serpentina: async () => (await import("./snake/game")).createSerpentinaGame,
 };
 /** true si el id tiene un juego real; si no, el reproductor usa el simulador. */
 export function hasRealGame(id: string): boolean {

@@ -956,6 +956,11 @@ a {
   color: var(--green);
   text-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
 }
+/* Frutas comidas: solo lo publican los juegos que las cuentan (Serpentina) */
+.hud-stat.fruits .v {
+  color: var(--green);
+  text-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+}
 .hud-actions {
   display: flex;
   gap: 10px;
