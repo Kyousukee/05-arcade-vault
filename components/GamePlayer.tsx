@@ -8,6 +8,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import TouchGamepad from "@/components/TouchGamepad";
 import { hasRealGame, loadGame } from "@/lib/games/registry";
 import { SKIN_IDS, type GameInstance, type GameState, type SkinId } from "@/lib/games/types";
 /** Teclas del juego que no deben scrollear la página mientras está montado. */
@@ -55,6 +56,8 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   const skinRef = useRef<SkinId>(skin);
   // Solo los juegos que implementan `setSkin` muestran el selector.
   const [supportsSkins, setSupportsSkins] = useState(false);
+  // Puntero grueso (móvil, tableta): decide si se monta el mando táctil.
+  const [isCoarse, setIsCoarse] = useState(false);
   // Estado mostrado en el HUD: del juego real, o del simulador.
   const score = isReal ? (gameState?.score ?? 0) : mockScore;
   // `undefined` = el juego no tiene vidas (Caída) y el HUD no muestra ese stat.
@@ -188,6 +191,30 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
     },
     [closeSkins, pickSkin],
   );
+  // ── Móvil: mando táctil y layout a pantalla completa ──────────────────────
+  // El mando solo se monta con puntero grueso: en escritorio no hay markup ni
+  // listeners táctiles, solo esta comprobación. `av-playing` es la señal que el
+  // CSS usa para ocultar navegación, pie y franja del CRT mientras se juega.
+  useEffect(() => {
+    if (!isReal) return;
+    const mq = window.matchMedia("(pointer: coarse)");
+    // `pointer: coarse` no basta: Chrome para Android en modo «sitio para
+    // ordenador» —y algún navegador con lápiz— se anuncia como puntero fino y
+    // dejaría el móvil sin controles. Si la pantalla acepta toques, hay mando.
+    const touchable = () => mq.matches || navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    const apply = () => {
+      const coarse = touchable();
+      setIsCoarse(coarse);
+      document.body.classList.toggle("av-playing", coarse);
+    };
+    apply();
+    const onChange = () => apply();
+    mq.addEventListener("change", onChange);
+    return () => {
+      mq.removeEventListener("change", onChange);
+      document.body.classList.remove("av-playing");
+    };
+  }, [isReal]);
   // Las teclas del juego no deben scrollear la página (ni robar el foco a un
   // campo de formulario, como el input de iniciales del modal).
   useEffect(() => {
@@ -270,8 +297,8 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   };
   return (
     <div className="av-player fade-in">
-      <div className="player-hud">
-        <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+      <div className="player-hud hud-compact">
+        <div className="hud-stats">
           <div className="hud-stat">
             <div className="l">Jugador</div>
             <div className="v" style={{ color: "var(--ink)" }}>
@@ -412,6 +439,7 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
           <span>CARGA · 1MB</span>
         </div>
       </div>
+      {isReal && isCoarse && <TouchGamepad gameId={game.id} />}
       {isReal && (
         <p className="keyboard-notice mono">
           ▸ ESTE JUEGO REQUIERE TECLADO · ←/→ ROTAR · ↑ PROPULSAR · ESPACIO DISPARAR · P PAUSA

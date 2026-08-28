@@ -925,6 +925,13 @@ a {
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
+/* Bloque de stats del HUD. Era un style inline; es una clase para que el HUD
+   compacto de móvil pueda apretarlo sin pelearse con la especificidad. */
+.hud-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
 .hud-stat {
   display: flex;
   flex-direction: column;
@@ -1154,11 +1161,12 @@ a {
   image-rendering: auto;
   touch-action: none;
 }
-/* Aviso de teclado: oculto salvo en pantallas pequeñas o sin puntero fino */
+/* Aviso de teclado: solo en escritorio estrecho. Donde hay puntero grueso se
+   monta el mando táctil, y ahí el aviso pasaría de informar a mentir. */
 .keyboard-notice {
   display: none;
 }
-@media (max-width: 720px), (pointer: coarse) {
+@media (max-width: 720px) and (pointer: fine) {
   .keyboard-notice {
     display: block;
     margin: 14px 0 0;
@@ -1171,6 +1179,267 @@ a {
     letter-spacing: 0.14em;
     text-align: center;
   }
+}
+/* ===== reproductor a pantalla completa en móvil =====
+   `av-playing` la pone y la quita GamePlayer mientras el mando está montado.
+   Todo el bloque vive bajo (pointer: coarse): en escritorio no aplica nada. */
+@media (pointer: coarse) {
+  body.av-playing {
+    height: 100dvh;
+    overflow: hidden;
+    /* Mientras se juega, la pantalla no es texto: una pulsación larga debe
+       pulsar una tecla, no abrir el «Copiar / Buscar selección» de iOS ni
+       dejar la lupa y los tiradores de selección encima del canvas. */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  /* El modal de fin de partida sí es un formulario: ahí se escribe y se
+     selecciona con normalidad. */
+  body.av-playing .modal input {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  /* Fuera navegación, pie y franja del CRT: el alto es para el juego. */
+  body.av-playing .av-nav,
+  body.av-playing > footer,
+  body.av-playing .crt-bottom {
+    display: none;
+  }
+  body.av-playing .av-main {
+    display: flex;
+    min-height: 0;
+  }
+  /* Canvas arriba, mando abajo, sin scroll de página. `dvh` es la única unidad
+     que sigue a la barra del navegador móvil cuando aparece y desaparece. */
+  body.av-playing .av-player {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: none;
+    margin: 0;
+    padding: 8px 10px 10px;
+    overflow: hidden;
+  }
+  /* El marco del televisor sobra en una pantalla de 360 px: se queda el tubo.
+     `flex: 1 1 auto` + `min-height: 0` deja que el CRT ceda alto: el mando
+     nunca debe quedar recortado por el `overflow: hidden` del reproductor. */
+  body.av-playing .crt {
+    display: flex;
+    align-items: center;
+    flex: 0 1 auto;
+    min-height: 0;
+    padding: 0;
+    border-radius: 10px;
+    box-shadow:
+      0 0 0 2px #1b1b22,
+      0 0 40px -12px rgba(0, 245, 255, 0.4);
+  }
+  body.av-playing .crt-screen {
+    width: 100%;
+    border-radius: 8px;
+    max-height: 100%;
+  }
+  /* El mando se pega abajo y se queda con el hueco que sobre. */
+  body.av-playing .touch-pad {
+    flex: none;
+    margin-top: auto;
+  }
+  /* HUD compacto: stats en una fila, acciones en otra. */
+  .player-hud.hud-compact {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+  }
+  .hud-compact .hud-stats {
+    gap: 10px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+  /* El nombre del jugador se cae: ya está en el modal de fin de partida y aquí
+     se comería el ancho de los stats que sí cambian durante la partida. */
+  .hud-compact .hud-stats .hud-stat:first-child {
+    display: none;
+  }
+  .hud-compact .hud-stat {
+    gap: 2px;
+  }
+  .hud-compact .hud-stat .l {
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+  .hud-compact .hud-stat .v {
+    font-size: 11px;
+  }
+  .hud-compact .hud-actions {
+    gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+  .hud-compact .hud-actions .btn {
+    flex: 1;
+    padding: 9px 6px;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+  }
+  .hud-compact .skin-select {
+    flex: 1;
+    margin-right: 0;
+  }
+  .hud-compact .skin-trigger {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 8px;
+    font-size: 8px;
+    gap: 6px;
+  }
+  .hud-compact .skin-legend {
+    display: none;
+  }
+  /* Modal de fin de partida: anclado arriba y con scroll propio. Centrado, el
+     teclado virtual que sale al escribir las iniciales tapa el botón de
+     guardar. */
+  .modal-bd {
+    align-items: flex-start;
+    padding: 12px;
+    overflow-y: auto;
+  }
+  .modal {
+    width: 100%;
+    max-height: 90dvh;
+    overflow-y: auto;
+    margin-top: 12px;
+    padding: 22px 18px;
+  }
+  .modal h2 {
+    font-size: 16px;
+  }
+  .modal .final {
+    font-size: 28px;
+  }
+  .modal .input-row {
+    flex-direction: column;
+    margin: 16px 0 10px;
+  }
+}
+/* ===== mando táctil (solo se monta con puntero grueso) ===== */
+/* Ningún toque sobre el mando debe scrollear la página ni seleccionar texto:
+   el dedo aquí solo pulsa teclas. */
+.touch-pad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Rejilla 3×3: los huecos de las direcciones que el juego no usa se quedan
+   vacíos, sin botón que pulsar. */
+.pad-dir {
+  display: grid;
+  grid-template-areas:
+    ". u ."
+    "l . r"
+    ". d .";
+  /* Se encoge con la pantalla: en un móvil corto el mando debe caber entero
+     antes que verse grande. */
+  grid-template-columns: repeat(3, clamp(42px, 13vw, 56px));
+  grid-template-rows: repeat(3, clamp(42px, 13vw, 56px));
+  gap: 5px;
+}
+.pad-btns {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.pad-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: var(--pixel);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--bg-3);
+  border: 1px solid var(--cyan);
+  cursor: pointer;
+  touch-action: none;
+  transition:
+    box-shadow 120ms ease,
+    transform 80ms ease;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.pad-key[data-dir] {
+  font-size: 15px;
+  color: var(--cyan);
+}
+.pad-key[data-dir="u"] {
+  grid-area: u;
+}
+.pad-key[data-dir="l"] {
+  grid-area: l;
+}
+.pad-key[data-dir="r"] {
+  grid-area: r;
+}
+.pad-key[data-dir="d"] {
+  grid-area: d;
+}
+/* Botón de acción: redondo y grande, como el de un mando de verdad. */
+.pad-key[data-btn] {
+  width: clamp(60px, 20vw, 80px);
+  height: clamp(60px, 20vw, 80px);
+  border-radius: 50%;
+  clip-path: none;
+  font-size: 9px;
+  line-height: 1.4;
+  text-align: center;
+}
+.pad-key[data-btn="a"] {
+  border-color: var(--magenta);
+  color: var(--magenta);
+}
+.pad-key[data-btn="b"] {
+  width: clamp(48px, 16vw, 64px);
+  height: clamp(48px, 16vw, 64px);
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+/* `data-held` lo pone y lo quita el propio componente en pointerdown/up: con
+   captura de puntero, `:active` no es fiable si el dedo sale del botón. */
+.pad-key[data-held],
+.pad-key:active {
+  transform: scale(0.94);
+  background: rgba(0, 245, 255, 0.12);
+  box-shadow:
+    0 0 16px rgba(0, 245, 255, 0.5),
+    inset 0 0 10px rgba(0, 245, 255, 0.3);
+}
+.pad-key[data-btn="a"][data-held],
+.pad-key[data-btn="a"]:active {
+  background: rgba(255, 0, 110, 0.14);
+  box-shadow:
+    0 0 16px rgba(255, 0, 110, 0.55),
+    inset 0 0 10px rgba(255, 0, 110, 0.3);
+}
+.pad-key[data-btn="b"][data-held],
+.pad-key[data-btn="b"]:active {
+  background: rgba(245, 255, 0, 0.12);
+  box-shadow:
+    0 0 16px rgba(245, 255, 0, 0.55),
+    inset 0 0 10px rgba(245, 255, 0, 0.3);
 }
 .crt {
   position: relative;
