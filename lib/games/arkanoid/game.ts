@@ -7,7 +7,7 @@
 //
 // Todo el juego vive en el espacio lógico 800×600 de la fuente. El canvas solo
 // aplica un transform de escala, así que la física se porta sin recalibrar.
-import type { GameFactory, GameInstance, GameMountOptions, GamePhase } from "../types";
+import type { GameFactory, GameInstance, GameMountOptions, GamePhase, SkinId } from "../types";
 import { createGameAudio } from "./audio";
 import {
   BALL_SIZE,
@@ -28,10 +28,14 @@ import {
   STATE_INTERVAL,
 } from "./constants";
 import { LEVELS, type BlockColor } from "./levels";
+import { type ArkanoidSkin, popGlow, pushGlow, resolveSkin } from "./skins";
 import {
   EXPLOSION_FRAMES,
+  type SkinnedSheet,
+  type Spritesheet,
+  buildTintedSheet,
   drawBlockSprite,
-  drawFrame,
+  drawExplosionFrame,
   drawSprite,
   loadSpritesheet,
 } from "./sprites";
@@ -69,7 +73,14 @@ interface ArkanoidRuntime {
   prevPhase: GamePhase;
   keys: { left: boolean; right: boolean };
   /** null hasta que resuelve el PNG; mientras tanto solo se pinta el fondo. */
-  sheet: CanvasImageSource | null;
+  sheet: Spritesheet | null;
+  /** Skin activa. La muta setSkin(); el siguiente frame ya pinta con ella. */
+  skin: ArkanoidSkin;
+  /**
+   * Hojas ya tintadas, una por skin. El tintado recorre la hoja entera, así que
+   * se genera una sola vez por skin y nunca por frame.
+   */
+  tinted: Map<SkinId, SkinnedSheet>;
   /** Mensaje del overlay de fin de partida. */
   endMessage: string;
   /** ms restantes de overlay de fin antes de avisar al reproductor. */
@@ -91,6 +102,7 @@ export const createBloqueBusterGame: GameFactory = ({
   canvas,
   onState,
   onGameOver,
+  skin,
 }: GameMountOptions): GameInstance => {
   const ctx2d = canvas.getContext("2d");
   if (!ctx2d) throw new Error("No se pudo obtener el contexto 2D del canvas");
@@ -108,6 +120,8 @@ export const createBloqueBusterGame: GameFactory = ({
     prevPhase: "playing",
     keys: { left: false, right: false },
     sheet: null,
+    skin: resolveSkin(skin),
+    tinted: new Map(),
     endMessage: MSG_GAME_OVER,
     gameOverTimer: 0,
     stateAccum: 0,
@@ -334,49 +348,97 @@ export const createBloqueBusterGame: GameFactory = ({
    * las vidas como sprites de pelota a la derecha. Todo en px lógicos, así que
    * escala con el resto del tablero.
    */
-  function drawHud(sheet: CanvasImageSource) {
-    ctx.fillStyle = "#fff";
+  function drawHud(skinned: SkinnedSheet) {
+    const { skin: active } = rt;
+    ctx.fillStyle = active.hudText;
+    pushGlow(ctx, active, active.hudText);
     ctx.font = "bold 18px monospace";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     ctx.fillText(`Score: ${rt.score}`, 10, 10);
     ctx.textAlign = "center";
     ctx.fillText(`Nivel: ${rt.level}`, LOGICAL_W / 2, 10);
+    if (active.tint) pushGlow(ctx, active, active.tint.ball);
     const spacing = 4;
     for (let i = 0; i < rt.lives; i++) {
       const x = LOGICAL_W - 10 - (rt.lives - i) * (BALL_SIZE + spacing);
-      drawSprite(ctx, sheet, "ball", x, 10, BALL_SIZE, BALL_SIZE);
+      drawSprite(ctx, skinned, "ball", x, 10, BALL_SIZE, BALL_SIZE);
     }
+    popGlow(ctx);
   }
   /** Overlay de fin de partida: velo oscuro y el mensaje centrado. */
   function drawEndOverlay() {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    const { skin: active } = rt;
+    ctx.fillStyle = active.overlayVeil;
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = active.overlayTitle;
     ctx.font = "bold 48px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    pushGlow(ctx, active, active.overlayTitle);
     ctx.fillText(rt.endMessage, LOGICAL_W / 2, LOGICAL_H / 2);
+    popGlow(ctx);
+  }
+  /**
+   * Marco de los tres muros que rebotan. Solo lo pintan las skins que lo
+   * declaran: `clasico` lo tiene a `null` y el canvas queda como el original.
+   */
+  function drawWalls() {
+    const { wall } = rt.skin;
+    if (!wall) return;
+    ctx.strokeStyle = wall;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(1, LOGICAL_H);
+    ctx.lineTo(1, 1);
+    ctx.lineTo(LOGICAL_W - 1, 1);
+    ctx.lineTo(LOGICAL_W - 1, LOGICAL_H);
+    ctx.stroke();
+  }
+  /**
+   * Hoja lista para la skin activa. Sin tint (`clasico`) devuelve la hoja
+   * original intacta: el sprite no pasa por el pipeline de tintado y el render
+   * es exactamente el de siempre.
+   */
+  function skinnedSheet(): SkinnedSheet | null {
+    const base = rt.sheet;
+    if (!base) return null;
+    const active = rt.skin;
+    if (!active.tint) return { sheet: base, grayExplosion: null };
+    let cached = rt.tinted.get(active.id);
+    if (!cached) {
+      cached = buildTintedSheet(base, active.tint);
+      rt.tinted.set(active.id, cached);
+    }
+    return cached;
   }
   function draw() {
-    ctx.fillStyle = "#000";
+    const active = rt.skin;
+    ctx.fillStyle = active.background;
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    // Mientras el spritesheet no haya cargado solo se ve el fondo negro.
-    const sheet = rt.sheet;
-    if (!sheet) return;
+    drawWalls();
+    // Mientras el spritesheet no haya cargado solo se ve el fondo.
+    const skinned = skinnedSheet();
+    if (!skinned) return;
     for (const block of rt.blocks) {
-      if (block.alive) drawBlockSprite(ctx, sheet, block.color, block.x, block.y, block.w, block.h);
+      if (!block.alive) continue;
+      if (active.tint) pushGlow(ctx, active, active.tint.blocks[block.color]);
+      drawBlockSprite(ctx, skinned, block.color, block.x, block.y, block.w, block.h);
     }
     for (const exp of rt.explosions) {
       const frames = EXPLOSION_FRAMES[exp.color];
       const index = Math.min(Math.floor((exp.elapsed / EXPLOSION_DURATION) * frames.length), 3);
-      drawFrame(ctx, sheet, frames[index], exp.x, exp.y, exp.w, exp.h);
+      if (active.tint) pushGlow(ctx, active, active.tint.blocks[exp.color]);
+      drawExplosionFrame(ctx, skinned, exp.color, index, exp.x, exp.y, exp.w, exp.h);
     }
-    drawSprite(ctx, sheet, "paddle", rt.paddle.x, rt.paddle.y, rt.paddle.w, rt.paddle.h);
-    drawSprite(ctx, sheet, "ball", rt.ball.x, rt.ball.y, rt.ball.w, rt.ball.h);
+    if (active.tint) pushGlow(ctx, active, active.tint.paddle);
+    drawSprite(ctx, skinned, "paddle", rt.paddle.x, rt.paddle.y, rt.paddle.w, rt.paddle.h);
+    if (active.tint) pushGlow(ctx, active, active.tint.ball);
+    drawSprite(ctx, skinned, "ball", rt.ball.x, rt.ball.y, rt.ball.w, rt.ball.h);
+    popGlow(ctx);
     // El HUD desaparece bajo el overlay de fin; en pausa sigue visible.
     if (rt.phase === "gameover") drawEndOverlay();
-    else drawHud(sheet);
+    else drawHud(skinned);
   }
   // ── Publicación de estado al HUD ──────────────────────────────────────────
   let lastPhase: GamePhase | null = null;
@@ -456,6 +518,11 @@ export const createBloqueBusterGame: GameFactory = ({
     restart() {
       lastTime = null;
       initGame();
+    },
+    setSkin(id: SkinId) {
+      // Sin remontar ni reiniciar la partida: el siguiente frame ya pinta con la
+      // nueva, y su hoja tintada sale del caché si ya se generó antes.
+      rt.skin = resolveSkin(id);
     },
     destroy() {
       if (destroyed) return;

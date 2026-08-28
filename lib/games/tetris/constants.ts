@@ -7,20 +7,10 @@ export const COLS = 10;
 /** Filas del tablero. */
 export const ROWS = 20;
 /**
- * Color de cada pieza, indexado por el valor de la celda. El índice 0 es la
- * celda vacía, de ahí el `null` inicial: el valor de la celda es el índice.
+ * Los colores de las piezas ya no viven aquí: son parte de la skin activa y
+ * están en `skins.ts` (`CaidaSkin.pieces`, mismo indexado por valor de celda,
+ * con `null` en el índice 0). Este archivo solo guarda tunables sin color.
  */
-export const COLORS: readonly (string | null)[] = [
-  null,
-  "#4dd0e1", // I - cian
-  "#ffd54f", // O - amarillo
-  "#ba68c8", // T - púrpura
-  "#81c784", // S - verde
-  "#e57373", // Z - rojo
-  "#90caf9", // J - azul pálido
-  "#ffb74d", // L - naranja
-  "#9e9e9e", // N - tuerca (gris metálico)
-];
 /**
  * Las 8 piezas, con la matriz de la fuente. El índice 0 es `null` para que el
  * tipo de pieza coincida con su índice de color en COLORS.
@@ -75,12 +65,6 @@ export const PIECES: readonly (readonly (readonly number[])[] | null)[] = [
 export const LINE_SCORES = [0, 100, 300, 500, 800] as const;
 /** Desplazamientos que se prueban al rotar pegado a una pared (wall kicks). */
 export const KICKS = [0, -1, 1, -2, 2] as const;
-/**
- * Color de la rejilla. En la fuente se leía de la CSS var `--grid-line` con
- * getComputedStyle; esa var no existe en app/globals.css y la lógica del juego
- * no debe tocar el DOM, así que es una constante.
- */
-export const GRID_LINE_COLOR = "rgba(255,255,255,0.06)";
 /** ms entre bajadas en el nivel 1. */
 export const DROP_BASE_MS = 1000;
 /** ms que se restan al intervalo por cada nivel ganado. */

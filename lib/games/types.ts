@@ -1,5 +1,20 @@
 // ===== types.ts — contrato que todo juego real debe cumplir para montarse =====
 export type GamePhase = "playing" | "paused" | "dead" | "gameover";
+/**
+ * Skins disponibles para cualquier juego. `clasico` reproduce exactamente el
+ * aspecto original del juego y es el fallback de todo resolver.
+ */
+export type SkinId = "clasico" | "neon" | "retro";
+/** Orden de presentación en el selector del HUD. `clasico` siempre primero. */
+export const SKIN_IDS: readonly SkinId[] = ["clasico", "neon", "retro"];
+/**
+ * Forma común de una skin. Cada juego la extiende con SU record de colores: los
+ * tokens de un tetris (piezas, rejilla, panel NEXT) no son los de un asteroids.
+ */
+export interface GameSkin {
+  id: SkinId;
+  label: string;
+}
 /** Estado que el juego publica al HUD React. */
 export interface GameState {
   score: number;
@@ -27,6 +42,12 @@ export interface GameInstance {
   restart(): void;
   /** Cancela el rAF y quita listeners y ResizeObserver. */
   destroy(): void;
+  /**
+   * Cambia la skin en caliente, sin remontar ni reiniciar la partida: el
+   * siguiente frame ya pinta con la nueva. Opcional mientras no la implementen
+   * los cuatro juegos; su ausencia es la señal de que el HUD oculta el selector.
+   */
+  setSkin?(id: SkinId): void;
 }
 export interface GameMountOptions {
   canvas: HTMLCanvasElement;
@@ -34,5 +55,7 @@ export interface GameMountOptions {
   onState: (state: GameState) => void;
   /** Se invoca una vez, tras el overlay GAME OVER del canvas. */
   onGameOver: (finalScore: number) => void;
+  /** Skin inicial. Ausente = `clasico`, el aspecto original del juego. */
+  skin?: SkinId;
 }
 export type GameFactory = (opts: GameMountOptions) => GameInstance;
