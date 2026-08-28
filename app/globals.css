@@ -964,6 +964,168 @@ a {
 .hud-actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+/* Selector de skin: combo box del HUD, con el chaflán de los .btn pero medio
+   tono más apagado para no competir con PAUSA / FIN / SALIR. El control entero
+   adopta el acento de la skin cargada: la caja previsualiza lo que hay dentro.
+   `--skin-accent` se hereda al panel, y cada opción lo redefine para el suyo. */
+.skin-select {
+  --skin-accent: #9e9e9e;
+  --skin-glow: rgba(158, 158, 158, 0.3);
+  position: relative;
+  margin-right: 4px;
+}
+.skin-select[data-skin="neon"],
+.skin-select .skin-option[data-skin="neon"] {
+  --skin-accent: var(--cyan);
+  --skin-glow: rgba(0, 245, 255, 0.45);
+}
+.skin-select[data-skin="retro"],
+.skin-select .skin-option[data-skin="retro"] {
+  --skin-accent: #ffb000;
+  --skin-glow: rgba(255, 176, 0, 0.45);
+}
+/* Rótulo montado sobre el borde, como la serigrafía de un panel de cabina. */
+.skin-legend {
+  position: absolute;
+  top: -5px;
+  left: 11px;
+  z-index: 1;
+  padding: 0 5px;
+  background: var(--bg-2);
+  font-family: var(--pixel);
+  font-size: 7px;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+.skin-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 138px;
+  padding: 12px 13px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  font-family: var(--pixel);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition:
+    color 160ms,
+    border-color 160ms,
+    box-shadow 160ms;
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+.skin-trigger .name {
+  flex: 1;
+  text-align: left;
+}
+.skin-trigger:hover,
+.skin-trigger:focus-visible {
+  color: var(--ink);
+  border-color: var(--skin-accent);
+  box-shadow: inset 0 0 10px var(--skin-glow);
+}
+.skin-select.open .skin-trigger {
+  color: var(--ink);
+  border-color: var(--skin-accent);
+}
+/* Punto de color: el mismo objeto en el disparador y en cada opción. */
+.skin-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--skin-accent);
+  box-shadow: 0 0 7px var(--skin-glow);
+}
+/* Cursor triangular del arcade, no un chevron redondeado. */
+.skin-caret {
+  width: 9px;
+  height: 6px;
+  flex: none;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transition: transform 160ms ease;
+}
+.skin-select.open .skin-caret {
+  transform: rotate(180deg);
+}
+.skin-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px var(--line-2);
+  animation: skin-list-in 130ms ease;
+}
+@keyframes skin-list-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.skin-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px 11px 15px;
+  font-family: var(--pixel);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition:
+    color 140ms,
+    background 140ms;
+}
+/* Barra de acento a la izquierda: apagada hasta que la fila está activa. */
+.skin-option::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--skin-accent);
+  opacity: 0;
+  transition: opacity 140ms;
+}
+.skin-option:hover,
+.skin-option:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.04);
+  outline: none;
+}
+.skin-option:hover::before,
+.skin-option:focus-visible::before {
+  opacity: 0.5;
+}
+.skin-option[aria-selected="true"] {
+  color: var(--skin-accent);
+}
+.skin-option[aria-selected="true"]::before {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skin-caret,
+  .skin-list {
+    transition: none;
+    animation: none;
+  }
 }
 /* Indicador de potenciador: solo visible mientras el disparo triple está activo */
 .hud-stat.power .v {

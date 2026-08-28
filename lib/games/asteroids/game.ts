@@ -2,7 +2,7 @@
 //
 // Todo el estado vive dentro de createAsteroidsGame(): no hay variables de
 // módulo mutables, así que dos instancias pueden coexistir sin interferirse.
-import type { GameFactory, GameInstance, GameMountOptions, GamePhase } from "../types";
+import type { GameFactory, GameInstance, GameMountOptions, GamePhase, SkinId } from "../types";
 import {
   BASE_H,
   BASE_W,
@@ -22,6 +22,7 @@ import {
   type KeyState,
   type Positioned,
 } from "./entities";
+import { popGlow, pushGlow, resolveSkin, type AsteroidsSkin } from "./skins";
 import { dist, rand } from "./utils";
 interface AsteroidsRuntime {
   ship: Ship;
@@ -41,11 +42,17 @@ interface AsteroidsRuntime {
   /** Dimensiones lógicas actuales (antes constantes W=800, H=600). */
   w: number;
   h: number;
+  /**
+   * Paleta activa. Se muta desde `setSkin()`: el dibujo la lee en cada frame,
+   * así que cambiar de skin no remonta el juego ni reinicia la partida.
+   */
+  skin: AsteroidsSkin;
 }
 export const createAsteroidsGame: GameFactory = ({
   canvas,
   onState,
   onGameOver,
+  skin,
 }: GameMountOptions): GameInstance => {
   const ctx2d = canvas.getContext("2d");
   if (!ctx2d) throw new Error("No se pudo obtener el contexto 2D del canvas");
@@ -93,6 +100,7 @@ export const createAsteroidsGame: GameFactory = ({
     killsSinceSpawn: 0,
     w,
     h,
+    skin: resolveSkin(skin),
   };
   let gameOverNotified = false;
   /** Fase a la que se vuelve al reanudar (`playing` o `dead`). */
@@ -295,21 +303,25 @@ export const createAsteroidsGame: GameFactory = ({
   function drawOverlay(c: CanvasRenderingContext2D, title: string, sub: string) {
     c.textAlign = "center";
     c.textBaseline = "alphabetic";
-    c.fillStyle = "#fff";
+    c.fillStyle = rt.skin.overlayTitle;
     c.font = "bold 46px monospace";
+    pushGlow(c, rt.skin, rt.skin.overlayTitle);
     c.fillText(title, rt.w / 2, rt.h / 2 - 18);
+    popGlow(c);
     c.font = "18px monospace";
-    c.fillStyle = "rgba(255,255,255,0.65)";
+    c.fillStyle = rt.skin.overlayScore;
+    pushGlow(c, rt.skin, rt.skin.overlayScore, 0.6);
     c.fillText(sub, rt.w / 2, rt.h / 2 + 22);
+    popGlow(c);
   }
   function draw(c: CanvasRenderingContext2D) {
-    c.fillStyle = "#000";
+    c.fillStyle = rt.skin.background;
     c.fillRect(0, 0, rt.w, rt.h);
-    rt.particles.forEach((p) => p.draw(c));
-    rt.asteroids.forEach((a) => a.draw(c));
-    rt.powerUps.forEach((p) => p.draw(c));
-    rt.bullets.forEach((b) => b.draw(c));
-    rt.ship.draw(c);
+    rt.particles.forEach((p) => p.draw(c, rt.skin));
+    rt.asteroids.forEach((a) => a.draw(c, rt.skin));
+    rt.powerUps.forEach((p) => p.draw(c, rt.skin));
+    rt.bullets.forEach((b) => b.draw(c, rt.skin));
+    rt.ship.draw(c, rt.skin);
     if (rt.phase === "gameover") drawOverlay(c, "GAME OVER", `PUNTAJE: ${rt.score}`);
   }
   // ── Publicación de estado al HUD ──────────────────────────────────────────
@@ -360,6 +372,9 @@ export const createAsteroidsGame: GameFactory = ({
     restart() {
       lastTime = null;
       initGame();
+    },
+    setSkin(id: SkinId) {
+      rt.skin = resolveSkin(id);
     },
     destroy() {
       if (destroyed) return;

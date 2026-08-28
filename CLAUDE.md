@@ -48,6 +48,11 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
   (`01-<id>-jugable.md` + `02-<id>-extension.md`), en estado borrador y sin preguntar nada. Solo
   escribe dentro de `specs/game-jam/`. Flujo: `@game-jam <tema>` → revisar y aprobar →
   `/spec-impl`.
+- `@skin-designer` (`.claude/agents/`) — mantiene el invariante de que **todo juego tiene al menos
+  3 skins**: `clasico` (default, idéntico al look original), `neon` y `retro`. Le entregas un id
+  del registry y **escribe el código**: `SkinId`/`GameSkin` en `lib/games/types.ts`,
+  `lib/games/<dir>/skins.ts`, el renderer y el selector con `av_skin_<gameId>` en `GamePlayer`.
+  Un juego por corrida; su memoria es `references/skins-status.md`. No escribe specs.
 
 Los skills están duplicados en `.claude/skills/` y `.agents/skills/`, y los agentes en
 `.claude/agents/` y `.agents/agents/` (portabilidad entre agentes); si editas uno, edita el

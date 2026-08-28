@@ -4,7 +4,7 @@
 // globals de módulo (board, current, next, score, lines, level, paused,
 // gameOver, lastTime, dropAccum, dropInterval, animId) aquí hay un `runtime`
 // local, así que dos instancias pueden coexistir sin interferirse.
-import type { GameFactory, GameInstance, GameMountOptions, GamePhase } from "../types";
+import type { GameFactory, GameInstance, GameMountOptions, GamePhase, SkinId } from "../types";
 import {
   clearLines,
   collide,
@@ -17,18 +17,17 @@ import {
   type Piece,
 } from "./board";
 import {
-  COLORS,
   COLS,
   DROP_BASE_MS,
   DROP_MIN_MS,
   DROP_STEP_MS,
   GAME_OVER_DELAY,
-  GRID_LINE_COLOR,
   KICKS,
   LINE_SCORES,
   ROWS,
   STATE_INTERVAL,
 } from "./constants";
+import { resolveSkin, type CaidaSkin } from "./skins";
 interface TetrisRuntime {
   board: Board;
   current: Piece;
@@ -55,6 +54,11 @@ interface TetrisRuntime {
   /** Esquina superior izquierda del tablero dentro del canvas. */
   boardX: number;
   boardY: number;
+  /**
+   * Paleta activa. Se muta desde `setSkin()`: el dibujo la lee en cada frame,
+   * así que el cambio se ve al frame siguiente sin reiniciar la partida.
+   */
+  skin: CaidaSkin;
 }
 /** Tamaño de referencia si el canvas todavía no está maquetado. */
 const FALLBACK_W = 800;
@@ -63,6 +67,7 @@ export const createCaidaGame: GameFactory = ({
   canvas,
   onState,
   onGameOver,
+  skin,
 }: GameMountOptions): GameInstance => {
   const ctx2d = canvas.getContext("2d");
   if (!ctx2d) throw new Error("No se pudo obtener el contexto 2D del canvas");
@@ -85,6 +90,7 @@ export const createCaidaGame: GameFactory = ({
     block: FALLBACK_H / ROWS,
     boardX: 0,
     boardY: 0,
+    skin: resolveSkin(skin),
   };
   let gameOverNotified = false;
   // ── Tamaño lógico y layout ────────────────────────────────────────────────
@@ -253,6 +259,20 @@ export const createCaidaGame: GameFactory = ({
     }
   }
   // ── Draw ──────────────────────────────────────────────────────────────────
+  /**
+   * Enciende el resplandor de la skin, si lo tiene. `glow` es fracción del lado
+   * de celda, así que el halo escala con el CRT en vez de quedarse fijo en px.
+   */
+  function pushGlow(c: CanvasRenderingContext2D, color: string, scale = 1) {
+    if (rt.skin.glow <= 0) return;
+    c.shadowColor = color;
+    c.shadowBlur = rt.block * rt.skin.glow * scale;
+  }
+  /** Apaga el resplandor: el canvas comparte contexto entre todas las capas. */
+  function popGlow(c: CanvasRenderingContext2D) {
+    c.shadowBlur = 0;
+    c.shadowColor = "transparent";
+  }
   /** Dibuja una celda en px absolutos, con el realce superior de la fuente. */
   function drawCell(
     c: CanvasRenderingContext2D,
@@ -263,12 +283,14 @@ export const createCaidaGame: GameFactory = ({
     alpha = 1,
   ) {
     if (!cell) return;
-    const color = COLORS[cell];
+    const color = rt.skin.pieces[cell];
     if (!color) return;
     c.globalAlpha = alpha;
     c.fillStyle = color;
+    pushGlow(c, color, alpha);
     c.fillRect(px + 1, py + 1, size - 2, size - 2);
-    c.fillStyle = "rgba(255,255,255,0.12)";
+    popGlow(c);
+    c.fillStyle = rt.skin.cellHighlight;
     c.fillRect(px + 1, py + 1, size - 2, Math.max(2, size * 0.13));
     c.globalAlpha = 1;
   }
@@ -285,7 +307,7 @@ export const createCaidaGame: GameFactory = ({
   }
   function drawGrid(c: CanvasRenderingContext2D) {
     const b = rt.block;
-    c.strokeStyle = GRID_LINE_COLOR;
+    c.strokeStyle = rt.skin.gridLine;
     c.lineWidth = 0.5;
     for (let col = 1; col < COLS; col++) {
       c.beginPath();
@@ -302,9 +324,11 @@ export const createCaidaGame: GameFactory = ({
   }
   function drawBoardFrame(c: CanvasRenderingContext2D) {
     const b = rt.block;
-    c.strokeStyle = "rgba(255,255,255,0.22)";
+    c.strokeStyle = rt.skin.boardFrame;
     c.lineWidth = Math.max(1, b * 0.06);
+    pushGlow(c, rt.skin.boardFrame);
     c.strokeRect(rt.boardX, rt.boardY, COLS * b, ROWS * b);
+    popGlow(c);
   }
   /**
    * Panel NEXT en el hueco lateral del CRT: rótulo encima y la pieza siguiente
@@ -319,10 +343,12 @@ export const createCaidaGame: GameFactory = ({
     const boxSize = 4 * b;
     c.textAlign = "left";
     c.textBaseline = "alphabetic";
-    c.fillStyle = "rgba(255,255,255,0.6)";
+    c.fillStyle = rt.skin.panelLabel;
     c.font = `${Math.round(b * 0.5)}px monospace`;
+    pushGlow(c, rt.skin.panelLabel, 0.6);
     c.fillText("NEXT", panelX, labelY);
-    c.strokeStyle = "rgba(255,255,255,0.14)";
+    popGlow(c);
+    c.strokeStyle = rt.skin.panelBox;
     c.lineWidth = Math.max(1, b * 0.05);
     c.strokeRect(panelX, boxY, boxSize, boxSize);
     const shape = rt.next.shape;
@@ -336,19 +362,21 @@ export const createCaidaGame: GameFactory = ({
   }
   /** Mismo patrón que Asteroides: overlay en canvas, y luego el modal React. */
   function drawGameOverOverlay(c: CanvasRenderingContext2D) {
-    c.fillStyle = "rgba(0,0,0,0.6)";
+    c.fillStyle = rt.skin.overlayVeil;
     c.fillRect(0, 0, rt.w, rt.h);
     c.textAlign = "center";
     c.textBaseline = "alphabetic";
-    c.fillStyle = "#fff";
+    c.fillStyle = rt.skin.overlayTitle;
     c.font = "bold 46px monospace";
+    pushGlow(c, rt.skin.overlayTitle);
     c.fillText("GAME OVER", rt.w / 2, rt.h / 2 - 18);
+    popGlow(c);
     c.font = "18px monospace";
-    c.fillStyle = "rgba(255,255,255,0.65)";
+    c.fillStyle = rt.skin.overlayScore;
     c.fillText(`PUNTAJE: ${rt.score}`, rt.w / 2, rt.h / 2 + 22);
   }
   function draw(c: CanvasRenderingContext2D) {
-    c.fillStyle = "#000";
+    c.fillStyle = rt.skin.background;
     c.fillRect(0, 0, rt.w, rt.h);
     drawGrid(c);
     for (let r = 0; r < ROWS; r++) {
@@ -429,6 +457,11 @@ export const createCaidaGame: GameFactory = ({
     restart() {
       lastTime = null;
       initGame();
+    },
+    // Solo muta la paleta: no toca el tablero, la pieza ni el reloj, así que
+    // cambiar de skin en mitad de la partida no la reinicia.
+    setSkin(id: SkinId) {
+      rt.skin = resolveSkin(id);
     },
     destroy() {
       if (destroyed) return;

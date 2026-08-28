@@ -1,11 +1,38 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { hasRealGame, loadGame } from "@/lib/games/registry";
-import type { GameInstance, GameState } from "@/lib/games/types";
+import { SKIN_IDS, type GameInstance, type GameState, type SkinId } from "@/lib/games/types";
 /** Teclas del juego que no deben scrollear la página mientras está montado. */
 const BLOCKED_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"]);
+/** Rótulo de cada skin en el selector del HUD. */
+const SKIN_LABELS: Record<SkinId, string> = {
+  clasico: "CLÁSICO",
+  neon: "NEÓN",
+  retro: "RETRO",
+};
+/**
+ * Skin guardada para un juego, o `clasico`. Devuelve `clasico` también en el
+ * servidor (no hay `localStorage`), lo cual es seguro: el selector solo se
+ * renderiza cuando `supportsSkins` es true, y eso ocurre después del montaje
+ * asíncrono del juego, así que nunca hay markup de skin que hidratar.
+ */
+function readStoredSkin(gameId: string): SkinId {
+  if (typeof window === "undefined") return "clasico";
+  try {
+    const saved = localStorage.getItem(`av_skin_${gameId}`) as SkinId | null;
+    return saved && SKIN_IDS.includes(saved) ? saved : "clasico";
+  } catch {
+    return "clasico";
+  }
+}
 export default function GamePlayer({ game }: { game: { id: string; title: string } }) {
   const router = useRouter();
   const isReal = hasRealGame(game.id);
@@ -21,6 +48,13 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [savedRank, setSavedRank] = useState<number | null>(null);
   const [saveError, setSaveError] = useState("");
+  // Skin activa, sembrada desde localStorage con la clave `av_skin_<gameId>`.
+  const [skin, setSkin] = useState<SkinId>(() => readStoredSkin(game.id));
+  // El montaje no debe depender de `skin` (remontaría y reiniciaría la partida
+  // al cambiarla), pero sí necesita el valor inicial: va por ref.
+  const skinRef = useRef<SkinId>(skin);
+  // Solo los juegos que implementan `setSkin` muestran el selector.
+  const [supportsSkins, setSupportsSkins] = useState(false);
   // Estado mostrado en el HUD: del juego real, o del simulador.
   const score = isReal ? (gameState?.score ?? 0) : mockScore;
   // `undefined` = el juego no tiene vidas (Caída) y el HUD no muestra ese stat.
@@ -48,21 +82,112 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
     let cancelled = false;
     loadGame(game.id).then((factory) => {
       if (!factory || cancelled) return;
-      instanceRef.current = factory({
+      // Relectura: si el componente se reutiliza para otro juego sin remontarse,
+      // la ref todavía traería la skin del juego anterior.
+      const stored = readStoredSkin(game.id);
+      skinRef.current = stored;
+      setSkin(stored);
+      const instance = factory({
         canvas,
         onState: setGameState,
         onGameOver: (score) => {
           setFinalScore(score);
           setOver(true);
         },
+        // Desde la ref, no del state: meter `skin` en las deps remontaría el
+        // juego —y reiniciaría la partida— cada vez que se cambia de skin.
+        skin: skinRef.current,
       });
+      instanceRef.current = instance;
+      setSupportsSkins(typeof instance.setSkin === "function");
     });
     return () => {
       cancelled = true;
       instanceRef.current?.destroy();
       instanceRef.current = null;
+      setSupportsSkins(false);
     };
   }, [isReal, game.id]);
+  // Cambios de skin en caliente: efecto aparte del montaje, para no reiniciar.
+  useEffect(() => {
+    skinRef.current = skin;
+    instanceRef.current?.setSkin?.(skin);
+  }, [skin]);
+  const chooseSkin = useCallback(
+    (id: SkinId) => {
+      setSkin(id);
+      try {
+        localStorage.setItem(`av_skin_${game.id}`, id);
+      } catch {
+        // Sin persistencia: la skin sigue aplicándose en esta sesión.
+      }
+    },
+    [game.id],
+  );
+  // --- Combo box de skin -----------------------------------------------
+  const [skinOpen, setSkinOpen] = useState(false);
+  const skinBoxRef = useRef<HTMLDivElement | null>(null);
+  const skinTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const skinOptionRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const closeSkins = useCallback((focusTrigger = true) => {
+    setSkinOpen(false);
+    if (focusTrigger) skinTriggerRef.current?.focus();
+  }, []);
+  const pickSkin = useCallback(
+    (id: SkinId) => {
+      chooseSkin(id);
+      closeSkins();
+    },
+    [chooseSkin, closeSkins],
+  );
+  // Al abrir, el foco entra en la opción activa para que el teclado siga la
+  // lista. No hay setState aquí: la apertura ya la decidió el manejador.
+  useEffect(() => {
+    if (!skinOpen) return;
+    skinOptionRefs.current[SKIN_IDS.indexOf(skin)]?.focus();
+  }, [skinOpen, skin]);
+  // Clic fuera del combo: cerrar sin robar el foco de donde haya ido.
+  useEffect(() => {
+    if (!skinOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!skinBoxRef.current?.contains(e.target as Node)) setSkinOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [skinOpen]);
+  const onTriggerKeyDown = useCallback((e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setSkinOpen(true);
+    }
+  }, []);
+  const onListKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLUListElement>) => {
+      const opts = skinOptionRefs.current;
+      const at = opts.indexOf(document.activeElement as HTMLLIElement);
+      const focusAt = (i: number) => {
+        e.preventDefault();
+        opts[(i + opts.length) % opts.length]?.focus();
+      };
+      if (e.key === "ArrowDown") return focusAt(at + 1);
+      if (e.key === "ArrowUp") return focusAt(at - 1);
+      if (e.key === "Home") return focusAt(0);
+      if (e.key === "End") return focusAt(opts.length - 1);
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (at >= 0) pickSkin(SKIN_IDS[at]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeSkins();
+        return;
+      }
+      // Tab sale del combo: se cierra, pero el foco sigue su curso natural.
+      if (e.key === "Tab") closeSkins(false);
+    },
+    [closeSkins, pickSkin],
+  );
   // Las teclas del juego no deben scrollear la página (ni robar el foco a un
   // campo de formulario, como el input de iniciales del modal).
   useEffect(() => {
@@ -187,6 +312,55 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
           )}
         </div>
         <div className="hud-actions">
+          {isReal && supportsSkins && (
+            <div
+              className={`skin-select${skinOpen ? " open" : ""}`}
+              data-skin={skin}
+              ref={skinBoxRef}
+            >
+              <span className="skin-legend">SKIN</span>
+              <button
+                type="button"
+                className="skin-trigger"
+                ref={skinTriggerRef}
+                aria-haspopup="listbox"
+                aria-expanded={skinOpen}
+                aria-label={`Skin del juego: ${SKIN_LABELS[skin]}`}
+                onClick={() => setSkinOpen((open) => !open)}
+                onKeyDown={onTriggerKeyDown}
+              >
+                <span className="skin-dot" aria-hidden="true" />
+                <span className="name">{SKIN_LABELS[skin]}</span>
+                <span className="skin-caret" aria-hidden="true" />
+              </button>
+              {skinOpen && (
+                <ul
+                  className="skin-list"
+                  role="listbox"
+                  aria-label="Skin del juego"
+                  onKeyDown={onListKeyDown}
+                >
+                  {SKIN_IDS.map((id, i) => (
+                    <li
+                      key={id}
+                      role="option"
+                      tabIndex={-1}
+                      data-skin={id}
+                      className="skin-option"
+                      aria-selected={skin === id}
+                      ref={(el) => {
+                        skinOptionRefs.current[i] = el;
+                      }}
+                      onClick={() => pickSkin(id)}
+                    >
+                      <span className="skin-dot" aria-hidden="true" />
+                      <span className="name">{SKIN_LABELS[id]}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <button className="btn yellow" onClick={togglePause}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>

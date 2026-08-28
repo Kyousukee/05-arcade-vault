@@ -1,7 +1,7 @@
 // ===== entities.ts — entidades del juego, sin globals de módulo =====
 //
 // Cada entidad recibe las dimensiones lógicas en update(dt, w, h) y el contexto
-// en draw(ctx): así dos instancias del juego pueden coexistir sin interferirse.
+// y la paleta en draw(ctx, skin): así dos instancias pueden coexistir sin interferirse.
 import {
   BULLET_RADIUS,
   BULLET_SPEED,
@@ -20,6 +20,7 @@ import {
   SPEEDS,
   TRIPLE_SPREAD,
 } from "./constants";
+import { particleStroke, popGlow, pushGlow, type AsteroidsSkin } from "./skins";
 import { rand, randInt, wrap } from "./utils";
 /** Teclas pulsadas, por `KeyboardEvent.code`. */
 export type KeyState = Record<string, boolean>;
@@ -51,11 +52,13 @@ export class Bullet implements Positioned {
     this.ttl -= dt;
     if (this.ttl <= 0) this.dead = true;
   }
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = "#fff";
+  draw(ctx: CanvasRenderingContext2D, skin: AsteroidsSkin) {
+    ctx.fillStyle = skin.bullet;
+    pushGlow(ctx, skin, skin.bullet);
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
+    popGlow(ctx);
   }
 }
 // ── Asteroid ────────────────────────────────────────────────────────────────
@@ -102,11 +105,12 @@ export class Asteroid implements Positioned {
     const size = (this.size - 1) as AsteroidSize;
     return [new Asteroid(this.x, this.y, size), new Asteroid(this.x, this.y, size)];
   }
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, skin: AsteroidsSkin) {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
-    ctx.strokeStyle = "#fff";
+    ctx.strokeStyle = skin.asteroid;
+    pushGlow(ctx, skin, skin.asteroid);
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -114,6 +118,7 @@ export class Asteroid implements Positioned {
     for (let i = 1; i < this.verts.length; i++) ctx.lineTo(this.verts[i][0], this.verts[i][1]);
     ctx.closePath();
     ctx.stroke();
+    popGlow(ctx);
     ctx.restore();
   }
 }
@@ -140,22 +145,26 @@ export class PowerUp implements Positioned {
     this.ttl -= dt;
     if (this.ttl <= 0) this.dead = true;
   }
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, skin: AsteroidsSkin) {
     if (this.ttl < 2 && Math.floor(this.ttl * 8) % 2 === 0) return;
     const pulse = 0.85 + Math.sin(performance.now() / 150) * 0.15;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(Math.PI / 4);
-    ctx.strokeStyle = "#0ff";
+    ctx.strokeStyle = skin.powerUp;
+    pushGlow(ctx, skin, skin.powerUp);
     ctx.lineWidth = 2;
     const r = this.radius * pulse;
     ctx.strokeRect(-r, -r, r * 2, r * 2);
+    popGlow(ctx);
     ctx.restore();
-    ctx.fillStyle = "#0ff";
+    ctx.fillStyle = skin.powerUp;
+    pushGlow(ctx, skin, skin.powerUp);
     ctx.font = "bold 12px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("3x", this.x, this.y);
+    popGlow(ctx);
   }
 }
 // ── Ship ────────────────────────────────────────────────────────────────────
@@ -217,14 +226,15 @@ export class Ship implements Positioned {
     }
     return [new Bullet(ox, oy, this.angle)];
   }
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, skin: AsteroidsSkin) {
     if (this.dead) return;
     // Parpadeo durante invencibilidad de reaparición
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = "#fff";
+    ctx.strokeStyle = skin.ship;
+    pushGlow(ctx, skin, skin.ship);
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
     // Silueta clásica: triángulo con muesca trasera
@@ -241,9 +251,11 @@ export class Ship implements Positioned {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8, 4);
-      ctx.strokeStyle = "rgba(255, 130, 0, 0.85)";
+      ctx.strokeStyle = skin.thrust;
+      pushGlow(ctx, skin, skin.thrust);
       ctx.stroke();
     }
+    popGlow(ctx);
     ctx.restore();
   }
 }
@@ -272,9 +284,9 @@ export class Particle implements Positioned {
     this.ttl -= dt;
     if (this.ttl <= 0) this.dead = true;
   }
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, skin: AsteroidsSkin) {
     const alpha = this.ttl / this.life;
-    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+    ctx.strokeStyle = particleStroke(skin, alpha);
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
