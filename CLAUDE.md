@@ -43,6 +43,11 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
   los huecos de género, la viabilidad en el contrato `GameFactory` y el encaje con el leaderboard.
   Solo piensa; lo único que escribe es su memoria en `references/game-suggestion.-todo.md`.
   Flujo: `@game-planner` → `/add-game` → `/spec-impl`.
+- `@game-jam` (`.claude/agents/`) — entrada alternativa al mismo pipeline: recibe un **tema** y
+  genera 3 juegos, cada uno con su carpeta `specs/game-jam/<game-id>/` y **dos specs completos**
+  (`01-<id>-jugable.md` + `02-<id>-extension.md`), en estado borrador y sin preguntar nada. Solo
+  escribe dentro de `specs/game-jam/`. Flujo: `@game-jam <tema>` → revisar y aprobar →
+  `/spec-impl`.
 
 Los skills están duplicados en `.claude/skills/` y `.agents/skills/`, y los agentes en
 `.claude/agents/` y `.agents/agents/` (portabilidad entre agentes); si editas uno, edita el
