@@ -31,7 +31,7 @@ commands / spec docs before implementing features — specs should drive impleme
 Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla si
 `/spec-impl` crea la rama `spec-NN-slug` automáticamente (hoy `AutoCreateBranch: true`).
 
-## Skills
+## Skills y agentes
 
 - `/frontend-design` — **siempre** para diseñar interfaz de usuario.
 - `/spec` → escribe el spec; `/spec-impl` → lo implementa en su propia rama.
@@ -39,9 +39,14 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
   el contrato `GameFactory`, alta en el registry, fila en la tabla `games` y verificación del
   leaderboard. Solo escribe el spec, no código. `platform-contract.md` (mismo directorio) es el
   mapa de rutas y contratos de la plataforma que el skill consulta.
+- `@game-planner` (`.claude/agents/`) — decide **qué** juego toca después: analiza el catálogo,
+  los huecos de género, la viabilidad en el contrato `GameFactory` y el encaje con el leaderboard.
+  Solo piensa; lo único que escribe es su memoria en `references/game-suggestion.-todo.md`.
+  Flujo: `@game-planner` → `/add-game` → `/spec-impl`.
 
-Los skills están duplicados en `.claude/skills/` y `.agents/skills/` (portabilidad entre
-agentes); si editas uno, edita el otro. `skills-lock.json` registra lo instalado.
+Los skills están duplicados en `.claude/skills/` y `.agents/skills/`, y los agentes en
+`.claude/agents/` y `.agents/agents/` (portabilidad entre agentes); si editas uno, edita el
+otro. `skills-lock.json` registra lo instalado.
 
 ## Commands
 
@@ -93,11 +98,12 @@ Los juegos son TypeScript sobre canvas, portados de `references/Started Games/`:
   simulador de demo.
 - Juegos actuales: `asteroides` (asteroids), `caida` (tetris), `bloque-buster` (arkanoid),
   `serpentina` (snake). Assets en `public/games/<slug>/`. Puedes verlos aqui C:\Users\Kyousukee\Desktop\ClaudeCode\05-arcade-vault\references\implemented-games.md
-  when you need to check wich games are implemented and how to implement new ones.  
+  when you need to check wich games are implemented and how to implement new ones.
 - `components/GamePlayer.tsx` (client) monta el canvas, dibuja el HUD y al terminar postea a
   `POST /api/scores` (`gameId`, `playerName` 3–10 chars en mayúsculas, `score` entero ≥ 0).
 
-**Para añadir un juego:** usa `/add-game` → spec → `/spec-impl`. Un juego nuevo necesita las
+**Para añadir un juego:** `@game-planner` (decide cuál y lo registra en
+`references/game-suggestion.-todo.md`) → `/add-game` → spec → `/spec-impl`. Un juego nuevo necesita las
 cuatro piezas: módulo en `lib/games/<juego>/`, entrada en el registry, fila en `games` y su
 aparición en el leaderboard.
 
