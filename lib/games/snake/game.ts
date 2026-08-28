@@ -9,7 +9,7 @@
 // A diferencia de Asteroides o Bloque Buster, aquí el movimiento no es continuo: la
 // serpiente avanza una celda entera cada `tickMs`, así que el loop acumula el `dt` de
 // cada frame y dispara como mucho un paso por frame.
-import type { GameFactory, GameInstance, GameMountOptions, GamePhase } from "../types";
+import type { GameFactory, GameInstance, GameMountOptions, GamePhase, SkinId } from "../types";
 import {
   CELL,
   COLS,
@@ -32,6 +32,7 @@ import {
   type FruitKind,
   type FruitTier,
 } from "./sprites";
+import { resolveSkin, type SerpentinaSkin } from "./skins";
 import {
   DIR_VECTORS,
   OPPOSITE,
@@ -77,18 +78,15 @@ interface SnakeRuntime {
   /** Tamaño del canvas en px CSS. Solo se usa para calcular el transform. */
   cssW: number;
   cssH: number;
+  /**
+   * Paleta activa. Se muta desde `setSkin()`: el dibujo la lee en cada frame,
+   * así que el cambio entra en el siguiente sin remontar ni reiniciar nada.
+   */
+  skin: SerpentinaSkin;
 }
 /** Tamaño de referencia si el canvas todavía no está maquetado. */
 const FALLBACK_W = LOGICAL_W;
 const FALLBACK_H = LOGICAL_H;
-/** Fondo del tablero. */
-const BOARD_BG = "#080810";
-/**
- * Celdas en damero, apenas más claras que el fondo. Se dibujan como rectángulos llenos y
- * no como una rejilla de líneas de 1 px: al escalar a un CRT de ancho arbitrario, una
- * línea fina caería en fracciones de píxel y se vería sucia.
- */
-const BOARD_CELL_ALT = "#0d0d18";
 /** Texto del overlay de fin. Serpentina no tiene victoria: siempre se acaba igual. */
 const MSG_GAME_OVER = "GAME OVER";
 /** ms de cada mitad del parpadeo rojo: con DEATH_FLASH = 200 salen ~3 destellos. */
@@ -97,6 +95,7 @@ export const createSerpentinaGame: GameFactory = ({
   canvas,
   onState,
   onGameOver,
+  skin,
 }: GameMountOptions): GameInstance => {
   const ctx2d = canvas.getContext("2d");
   if (!ctx2d) throw new Error("No se pudo obtener el contexto 2D del canvas");
@@ -119,6 +118,7 @@ export const createSerpentinaGame: GameFactory = ({
     stateAccum: 0,
     cssW: FALLBACK_W,
     cssH: FALLBACK_H,
+    skin: resolveSkin(skin),
   };
   let gameOverNotified = false;
   let destroyed = false;
@@ -344,11 +344,15 @@ export const createSerpentinaGame: GameFactory = ({
     }
   }
   // ── Draw ──────────────────────────────────────────────────────────────────
-  /** Tablero: fondo liso más un damero muy tenue que deja leer la rejilla de celdas. */
+  /**
+   * Tablero: fondo liso más un damero muy tenue que deja leer la rejilla de celdas. El
+   * damero son rectángulos llenos y no una rejilla de líneas de 1 px: al escalar a un CRT
+   * de ancho arbitrario, una línea fina caería en fracciones de píxel y se vería sucia.
+   */
   function drawBoard() {
-    ctx.fillStyle = BOARD_BG;
+    ctx.fillStyle = rt.skin.background;
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    ctx.fillStyle = BOARD_CELL_ALT;
+    ctx.fillStyle = rt.skin.boardCellAlt;
     for (let row = 0; row < ROWS; row++) {
       for (let col = row % 2; col < COLS; col += 2) {
         ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
@@ -358,7 +362,12 @@ export const createSerpentinaGame: GameFactory = ({
   /**
    * Fruta: el recorte del atlas escalado a ~90 % de la celda conservando su relación de
    * aspecto — las alargadas (banana, kiwi) no se deforman — y centrado en la celda. Si el
-   * PNG no cargó, cae a un círculo del color del tramo y el juego sigue siendo jugable.
+   * PNG no cargó, cae a un círculo y el juego sigue siendo jugable.
+   *
+   * El sprite NO se tiñe con la skin: su color es lo que identifica cada fruta y delata
+   * su tramo de puntos, y teñirlo dejaría 22 manchas iguales. Lo que sí pone la skin es
+   * el halo de detrás (`fruitGlow`, a 0 en `clasico` y `retro`) y el color del círculo de
+   * reserva (`fruitFallback`, `null` en `clasico` para conservar el del atlas).
    */
   function drawFruit() {
     const sprite = FRUIT_SPRITES[rt.fruit.kind];
@@ -366,7 +375,7 @@ export const createSerpentinaGame: GameFactory = ({
     const cy = rt.fruit.row * CELL + CELL / 2;
     const sheet = rt.sheet;
     if (!sheet) {
-      ctx.fillStyle = sprite.color;
+      ctx.fillStyle = rt.skin.fruitFallback ?? sprite.color;
       ctx.beginPath();
       ctx.arc(cx, cy, CELL * 0.35, 0, Math.PI * 2);
       ctx.fill();
@@ -376,13 +385,19 @@ export const createSerpentinaGame: GameFactory = ({
     const scale = Math.min(max / sprite.w, max / sprite.h);
     const w = sprite.w * scale;
     const h = sprite.h * scale;
+    if (rt.skin.fruitGlow > 0) {
+      ctx.save();
+      ctx.shadowColor = rt.skin.fruitAura;
+      ctx.shadowBlur = rt.skin.fruitGlow;
+    }
     ctx.drawImage(sheet, sprite.x, sprite.y, sprite.w, sprite.h, cx - w / 2, cy - h / 2, w, h);
+    if (rt.skin.fruitGlow > 0) ctx.restore();
   }
   /** Overlay de fin de partida: velo oscuro y el mensaje centrado. */
   function drawEndOverlay() {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fillStyle = rt.skin.overlayVeil;
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H);
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle = rt.skin.overlayTitle;
     ctx.font = "bold 48px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -394,7 +409,7 @@ export const createSerpentinaGame: GameFactory = ({
     if (rt.phase !== "gameover") drawFruit();
     // Parpadeo, no rojo fijo: alterna cada FLASH_BLINK ms mientras dura deathFlash.
     const flashing = rt.deathFlash > 0 && Math.floor(rt.deathFlash / FLASH_BLINK) % 2 === 0;
-    drawSnake(ctx, rt.body, rt.dir, flashing);
+    drawSnake(ctx, rt.body, rt.dir, flashing, rt.skin);
     if (rt.phase === "gameover") drawEndOverlay();
   }
   // ── Publicación de estado al HUD ──────────────────────────────────────────
@@ -475,6 +490,11 @@ export const createSerpentinaGame: GameFactory = ({
     restart() {
       lastTime = null;
       initGame();
+    },
+    // Solo cambia la paleta que lee el dibujo: el siguiente frame ya pinta con la nueva,
+    // así que cambiar de skin en mitad de la partida no la reinicia.
+    setSkin(id: SkinId) {
+      rt.skin = resolveSkin(id);
     },
     destroy() {
       if (destroyed) return;

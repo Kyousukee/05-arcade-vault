@@ -1,10 +1,12 @@
 // ===== snake.ts — la serpiente: celdas, avance, colisiones y dibujo =====
 //
 // El atlas solo trae frutas: no hay sprites de cabeza, cuerpo ni cola, así que la
-// serpiente se dibuja con formas en el verde de la paleta del vault. Aquí no vive ningún
-// estado de módulo: todas las funciones reciben el `body` de su instancia y lo devuelven
-// o lo mutan, de modo que dos partidas simultáneas no comparten nada.
+// serpiente se dibuja con formas planas en los colores de la skin activa, que el llamador
+// le pasa: aquí no queda ni una constante de color. Aquí tampoco vive ningún estado de
+// módulo: todas las funciones reciben el `body` de su instancia y lo devuelven o lo mutan,
+// de modo que dos partidas simultáneas no comparten nada.
 import { CELL, COLS, ROWS, START_LENGTH } from "./constants";
+import { snakeBodyFill, type SerpentinaSkin } from "./skins";
 export type Dir = "up" | "down" | "left" | "right";
 export interface Cell {
   /** Columna, 0–31. */
@@ -26,12 +28,6 @@ export const OPPOSITE: Record<Dir, Dir> = {
   left: "right",
   right: "left",
 };
-/** Verde de la paleta (--green). El canvas no lee variables CSS, así que va literal. */
-const SNAKE_GREEN = "#00ff88";
-/** Cabeza: el mismo verde aclarado, para distinguirla de un vistazo. */
-const SNAKE_HEAD = "#b6ffe0";
-/** Rojo del parpadeo de muerte. */
-const SNAKE_DEAD = "#ff2e4d";
 /**
  * Serpiente inicial: START_LENGTH celdas horizontales centradas en el grid, con la cabeza
  * en el índice 0 y el cuerpo extendiéndose hacia la izquierda, mirando a la derecha.
@@ -90,7 +86,7 @@ function roundedRect(
   ctx.closePath();
 }
 /** Ojos de la cabeza, colocados según hacia dónde mira. */
-function drawEyes(ctx: CanvasRenderingContext2D, head: Cell, dir: Dir): void {
+function drawEyes(ctx: CanvasRenderingContext2D, head: Cell, dir: Dir, skin: SerpentinaSkin): void {
   const cx = head.col * CELL + CELL / 2;
   const cy = head.row * CELL + CELL / 2;
   const off = CELL * 0.18;
@@ -99,7 +95,7 @@ function drawEyes(ctx: CanvasRenderingContext2D, head: Cell, dir: Dir): void {
   // Los ojos se separan en el eje perpendicular al avance y se adelantan en el paralelo.
   const px = v.row;
   const py = v.col;
-  ctx.fillStyle = "#0a0a0f";
+  ctx.fillStyle = skin.snakeEye;
   for (const s of [-1, 1]) {
     ctx.beginPath();
     ctx.arc(
@@ -123,27 +119,32 @@ export function drawSnake(
   body: Cell[],
   dir: Dir,
   flashing: boolean,
+  skin: SerpentinaSkin,
 ): void {
   const pad = CELL * 0.08;
   const size = CELL - pad * 2;
   const radius = CELL * 0.28;
   ctx.save();
-  ctx.shadowColor = flashing ? SNAKE_DEAD : SNAKE_GREEN;
-  ctx.shadowBlur = 10;
+  // El resplandor no es un extra de `neon`: forma parte del aspecto original, así que
+  // `clasico` lo trae encendido y es `retro` —fósforo plano— quien lo apaga a 0.
+  if (skin.snakeGlow > 0) {
+    ctx.shadowColor = flashing ? skin.snakeDead : skin.snakeAura;
+    ctx.shadowBlur = skin.snakeGlow;
+  }
   for (let i = body.length - 1; i >= 0; i--) {
     const cell = body[i];
     if (flashing) {
-      ctx.fillStyle = SNAKE_DEAD;
+      ctx.fillStyle = skin.snakeDead;
     } else if (i === 0) {
-      ctx.fillStyle = SNAKE_HEAD;
+      ctx.fillStyle = skin.snakeHead;
     } else {
       // Degradado hacia la cola: de opaco a translúcido, sin llegar a desaparecer.
       const t = i / Math.max(1, body.length - 1);
-      ctx.fillStyle = `rgba(0, 255, 136, ${(1 - t * 0.55).toFixed(3)})`;
+      ctx.fillStyle = snakeBodyFill(skin, 1 - t * 0.55);
     }
     roundedRect(ctx, cell.col * CELL + pad, cell.row * CELL + pad, size, size, radius);
     ctx.fill();
   }
   ctx.restore();
-  if (body.length > 0) drawEyes(ctx, body[0], dir);
+  if (body.length > 0) drawEyes(ctx, body[0], dir, skin);
 }
