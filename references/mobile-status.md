@@ -1,0 +1,67 @@
+# Estado móvil — Arcade Vault
+
+Memoria de @mobile-porter. Actualizado: 2026-08-28.
+Estados: Pendiente · Completo · Parcial. Base heredada: `specs/10-controles-tactiles-movil.md`.
+
+| Estado   | Juego         | id              | Dir          | Mando                        | Fecha      | Notas                                                     |
+| -------- | ------------- | --------------- | ------------ | ---------------------------- | ---------- | --------------------------------------------------------- |
+| Completo | Asteroides    | `asteroides`    | `asteroids/` | ▲ ◀ ▶ · A FUEGO · B II       | 2026-08-28 | Del spec 10, no de una corrida de este agente.            |
+| Completo | Caída         | `caida`         | `tetris/`    | ▼ ◀ ▶ · A GIRO · B CAÍDA     | 2026-08-28 | Del spec 10. `B` es `Space`, no la pausa.                 |
+| Completo | Bloque Buster | `bloque-buster` | `arkanoid/`  | ◀ ▶ · B II                   | 2026-08-28 | Del spec 10. Mando de un solo botón.                      |
+| Completo | Serpentina    | `serpentina`    | `snake/`     | ▲ ▼ ◀ ▶ · B II               | 2026-08-28 | Del spec 10. Mando de un solo botón.                      |
+
+## Base heredada del spec 10
+
+Estas cuatro filas **no salieron de una corrida de @mobile-porter**: las dejó implementadas el
+spec `specs/10-controles-tactiles-movil.md`. Se registran aquí para que la primera corrida real
+solo vea como pendiente lo que de verdad lo esté.
+
+Lo que ese spec dejó montado y que toda corrida consume sin rediseñar:
+
+- `components/TouchGamepad.tsx` — cruceta de 4 direcciones + botones `A` / `B`, sin diagonales.
+  Traduce cada control a `KeyboardEvent` sintético sobre `window` (`emit()`), con multitouch por
+  `Map<pointerId, code>`, `setPointerCapture` y `keyup` de lo pendiente al desmontar. **No conoce
+  ningún juego**: todo lo específico vive en `PAD_MAPS`.
+- `components/GamePlayer.tsx` — `isCoarse` con `matchMedia("(pointer: coarse)")`, montaje bajo
+  `isReal && isCoarse`, y la clase `av-playing` en `document.body`.
+- `app/globals.css`, bloque `@media (pointer: coarse)` — layout de retrato a `100dvh` (Nav, footer
+  y `.crt-bottom` ocultos), `.player-hud.hud-compact` en dos filas, y el modal de fin de partida
+  anclado arriba con `max-height: 90dvh`.
+
+Fuera de alcance por decisión del spec 10, y por tanto de este agente: gestos (swipe, arrastre del
+paddle), landscape, overlay de "gira el dispositivo", vibración háptica, Fullscreen API,
+`userScalable: false`, mando remapeable, y cualquier cambio en `lib/games/`.
+
+## Detalle
+
+### asteroides — Completo (spec 10)
+
+- **Mando:** cruceta ▲ `ArrowUp` · ◀ `ArrowLeft` · ▶ `ArrowRight` — A `Space` (FUEGO) — B `KeyP` (II).
+- **Archivos:** solo `PAD_MAPS`.
+- **Controles descartados:** freno e hiperespacio. No caben en seis controles y el juego se
+  sostiene sin ellos.
+- **HUD / layout:** nada específico; usa `lives` y `power` (triple disparo), ya soportados.
+
+### caida — Completo (spec 10)
+
+- **Mando:** cruceta ▼ `ArrowDown` · ◀ `ArrowLeft` · ▶ `ArrowRight` — A `ArrowUp` (GIRO) —
+  B `Space` (CAÍDA).
+- **Archivos:** solo `PAD_MAPS`.
+- **Controles descartados:** la pausa (`KeyP`) cede su botón a la caída rápida; se pausa desde el
+  botón `PAUSA` del HUD compacto. Es el único juego donde `B` no es la pausa.
+- **HUD / layout:** usa `lines`, ya soportado.
+
+### bloque-buster — Completo (spec 10)
+
+- **Mando:** ◀ `ArrowLeft` · ▶ `ArrowRight` — B `KeyP` (II). Sin `A`, sin ▲ ▼.
+- **Archivos:** solo `PAD_MAPS`.
+- **Controles descartados:** ninguno; el juego solo lee tres teclas.
+- **Limitaciones:** mando de un solo botón, consecuencia aceptada de tener un mando único para
+  todo el catálogo. El arrastre del paddle sobre el canvas quedó fuera del spec 10.
+
+### serpentina — Completo (spec 10)
+
+- **Mando:** las cuatro direcciones — B `KeyP` (II). Sin `A`.
+- **Archivos:** solo `PAD_MAPS`.
+- **Controles descartados:** ninguno.
+- **HUD / layout:** usa `fruits`, ya soportado. El swipe para girar quedó fuera del spec 10.
