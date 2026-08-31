@@ -1,6 +1,6 @@
 # Estado de skins — Arcade Vault
 
-Memoria de @skin-designer. Actualizado: 2026-08-28.
+Memoria de @skin-designer. Actualizado: 2026-08-31.
 Estados: Pendiente · Completo · Parcial. Toda skin `clasico` reproduce el look original.
 
 | Estado    | Juego         | id              | Dir          | Skins                   | Fecha      | Notas                                                          |
@@ -9,6 +9,7 @@ Estados: Pendiente · Completo · Parcial. Toda skin `clasico` reproduce el look
 | Completo  | Asteroides    | `asteroides`    | `asteroids/` | clasico · neon · retro  | 2026-08-28 | Segunda corrida: consumió el contrato ya existente, sin tocarlo. |
 | Completo  | Serpentina    | `serpentina`    | `snake/`     | clasico · neon · retro  | 2026-08-28 | Tercera corrida. El atlas de frutas NO se tiñe: ver limitaciones. |
 | Completo  | Bloque Buster | `bloque-buster` | `arkanoid/`  | clasico · neon · retro  | 2026-08-28 | Spritesheet: tintado en canvas cacheado por skin, explosiones incluidas. |
+| Completo  | Ranaria       | `ranaria`       | `frogger/`   | clasico · neon · retro  | 2026-08-31 | Quinta corrida. El seam de paleta ya venía hecho: solo `skins.ts` + `setSkin`. |
 
 ## Contrato compartido
 
@@ -172,3 +173,36 @@ swatches. Estilos: `.skin-select` en
   `components/GamePlayer.tsx` y `lib/games/` deja los **2 errores preexistentes** de
   `react-hooks/set-state-in-effect` (`setName` y `setMockLevel`) — cero errores nuevos, y
   `GamePlayer.tsx` no se tocó en esta corrida.
+### ranaria — Completo
+- **Archivos:**
+  - `lib/games/frogger/skins.ts` — **nuevo.** `RanariaPalette` (movida desde `sprites.ts`),
+    `RanariaSkin`, `SKINS`, `resolveSkin()` y los helpers `pushGlow`/`popGlow`.
+  - `lib/games/frogger/sprites.ts` — se le quitaron `RanariaPalette` y `CLASSIC_PALETTE`, que
+    migraron a `skins.ts` (la paleta como entrada `clasico`, literal). Ahora importa el tipo.
+    **Ni una función de dibujo cambió**: ya reciban la paleta por parámetro desde el spec.
+  - `lib/games/frogger/game.ts` — la factory acepta `skin`, `rt.palette = resolveSkin(skin)`,
+    `setSkin()` en el handle público y el halo de `neon` envolviendo `drawEntities()` y
+    `drawPlayer()` con `pushGlow`/`popGlow`.
+  - `components/GamePlayer.tsx`, `app/globals.css` y `lib/games/types.ts` — **sin cambios**: el
+    contrato y el combo box `.skin-select` ya existían, y la detección por
+    `typeof instance.setSkin === "function"` hace aparecer el selector sola con `av_skin_ranaria`.
+- **Tokens de skin (37):** los 35 de `RanariaPalette` (`background`, `hudBg`, `hudText`,
+  `hudDim`, `roadBg`, `roadMark`, `riverBg`, `riverShine`, `safeBg`, `curb`, `goalRowBg`,
+  `goalBg`, `goalBorder`, `goalFilled`, `carBodies[4]`, `carGlass`, `wheel`, `truckBody`,
+  `truckCab`, `logBody`, `logGrain`, `turtleShell`, `turtleShellDark`, `turtleSubmerged`,
+  `frogBody`, `frogBelly`, `frogEye`, `frogPupil`, `frogDead`, `timeGood`, `timeWarn`,
+  `timeBad`, `overlayVeil`, `overlayTitle`) más `glow` y `glowColor`.
+- **`glow` fuera de la paleta, a propósito:** las funciones de `sprites.ts` reciben
+  `RanariaPalette` y no lo leen; el halo lo aplica `game.ts` sobre la capa de entidades y rana,
+  así que añadir skins no tocó ni una línea de dibujo. `clasico` y `retro` lo tienen a 0 y
+  `pushGlow` no toca el contexto; `neon` lo sube a 9 px cian.
+- **Fidelidad de `clasico`:** verificada por diff mecánico — los 35 tokens de la antigua
+  `CLASSIC_PALETTE` aparecen en `clasico` con el mismo valor y en el mismo orden, espacios de los
+  `rgba` incluidos; `glow: 0` deja el render byte a byte igual.
+- **Limitaciones:** ninguna. Ranaria dibuja por primitivas de canvas (sin PNG ni spritesheet), así
+  que todo su color es extraíble y todo cambia con la skin, HUD interno y overlay incluidos. El
+  grep de color sobre `lib/games/frogger/` no devuelve nada fuera de `skins.ts`.
+- **Verificación:** `npx tsc --noEmit` limpio y `npm run build` en verde. `npx eslint` sobre
+  `lib/games` y `components` deja solo los **8 problemas preexistentes** (todos en `components/`:
+  `set-state-in-effect` en `GamePlayer`, `Nav`, `HallOfFame` y 4 `jsx-no-comment-textnodes` en
+  `Home`) — cero en `lib/games/` y cero nuevos.

@@ -35,6 +35,11 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
 
 - `/frontend-design` — **siempre** para diseñar interfaz de usuario.
 - `/spec` → escribe el spec; `/spec-impl` → lo implementa en su propia rama.
+- `/spec-impl-game` (`.claude/skills/spec-impl-game/`) — **el que se usa para specs de juego.**
+  Delega la implementación entera en `/spec-impl` (no la copia), después deriva el `gameId` de la
+  clave nueva en `lib/games/registry.ts` y encadena `@skin-designer` y luego `@mobile-porter`,
+  **secuencialmente, nunca en paralelo** (ambos escriben en `components/GamePlayer.tsx` y
+  `app/globals.css`). Si el spec no añade ningún id al registry, avisa y no encadena.
 - `/add-game` (`.claude/skills/add-game/`) — spec de un juego jugable nuevo: portado a TS sobre
   el contrato `GameFactory`, alta en el registry, fila en la tabla `games` y verificación del
   leaderboard. Solo escribe el spec, no código. `platform-contract.md` (mismo directorio) es el
@@ -42,12 +47,12 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
 - `@game-planner` (`.claude/agents/`) — decide **qué** juego toca después: analiza el catálogo,
   los huecos de género, la viabilidad en el contrato `GameFactory` y el encaje con el leaderboard.
   Solo piensa; lo único que escribe es su memoria en `references/game-suggestion.-todo.md`.
-  Flujo: `@game-planner` → `/add-game` → `/spec-impl`.
+  Flujo: `@game-planner` → `/add-game` → `/spec-impl-game`.
 - `@game-jam` (`.claude/agents/`) — entrada alternativa al mismo pipeline: recibe un **tema** y
   genera 3 juegos, cada uno con su carpeta `specs/game-jam/<game-id>/` y **dos specs completos**
   (`01-<id>-jugable.md` + `02-<id>-extension.md`), en estado borrador y sin preguntar nada. Solo
   escribe dentro de `specs/game-jam/`. Flujo: `@game-jam <tema>` → revisar y aprobar →
-  `/spec-impl`.
+  `/spec-impl-game`.
 - `@skin-designer` (`.claude/agents/`) — mantiene el invariante de que **todo juego tiene al menos
   3 skins**: `clasico` (default, idéntico al look original), `neon` y `retro`. Le entregas un id
   del registry y **escribe el código**: `SkinId`/`GameSkin` en `lib/games/types.ts`,
@@ -120,8 +125,9 @@ Los juegos son TypeScript sobre canvas, portados de `references/Started Games/`:
   `POST /api/scores` (`gameId`, `playerName` 3–10 chars en mayúsculas, `score` entero ≥ 0).
 
 **Para añadir un juego:** `@game-planner` (decide cuál y lo registra en
-`references/game-suggestion.-todo.md`) → `/add-game` → spec → `/spec-impl` → `@skin-designer` →
-`@mobile-porter`. Un juego nuevo necesita las cuatro piezas: módulo en `lib/games/<juego>/`,
+`references/game-suggestion.-todo.md`) → `/add-game` → spec → **`/spec-impl-game`**, que hace de
+una sola vez `/spec-impl` → `@skin-designer` → `@mobile-porter`.
+Un juego nuevo necesita las cuatro piezas: módulo en `lib/games/<juego>/`,
 entrada en el registry, fila en `games` y su aparición en el leaderboard; y no está terminado
 hasta tener sus 3 skins y su entrada en `PAD_MAPS` (sin ella, en móvil sale sin mando y es
 injugable).

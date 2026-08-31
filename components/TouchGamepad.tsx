@@ -58,6 +58,16 @@ const PAD_MAPS: Record<string, PadMap> = {
     a: null,
     b: { code: "KeyP", label: "II", name: "Pausa" },
   },
+  // Ranaria salta una celda por pulsación: el mando emite un solo `keydown` por
+  // dedo (sin auto-repeat), así que un toque = un salto, que es lo canónico aquí.
+  ranaria: {
+    up: { code: "ArrowUp", label: "▲", name: "Saltar arriba" },
+    down: { code: "ArrowDown", label: "▼", name: "Saltar abajo" },
+    left: { code: "ArrowLeft", label: "◀", name: "Saltar a la izquierda" },
+    right: { code: "ArrowRight", label: "▶", name: "Saltar a la derecha" },
+    a: null,
+    b: { code: "KeyP", label: "II", name: "Pausa" },
+  },
 };
 /** Direcciones en el orden de la rejilla 3×3, con la celda que ocupa cada una. */
 const DIRS = [
