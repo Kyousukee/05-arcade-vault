@@ -53,6 +53,13 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
   del registry y **escribe el código**: `SkinId`/`GameSkin` en `lib/games/types.ts`,
   `lib/games/<dir>/skins.ts`, el renderer y el selector con `av_skin_<gameId>` en `GamePlayer`.
   Un juego por corrida; su memoria es `references/skins-status.md`. No escribe specs.
+- `@mobile-porter` (`.claude/agents/`) — mantiene el invariante de que **todo juego del registry es
+  jugable en móvil sin teclado**. Le entregas un id y **escribe el código**: su entrada en
+  `PAD_MAPS` de `components/TouchGamepad.tsx`, y lo que el HUD compacto o el layout `100dvh`
+  necesiten (`app/globals.css`, dentro del `@media (pointer: coarse)` existente). Verifica con
+  Playwright en un contexto táctil real (`hasTouch: true`), no redimensionando. Un juego por
+  corrida; su memoria es `references/mobile-status.md`. Hereda
+  `specs/10-controles-tactiles-movil.md` y no toca `lib/games/`. No escribe specs.
 
 Los skills están duplicados en `.claude/skills/` y `.agents/skills/`, y los agentes en
 `.claude/agents/` y `.agents/agents/` (portabilidad entre agentes); si editas uno, edita el
@@ -113,9 +120,11 @@ Los juegos son TypeScript sobre canvas, portados de `references/Started Games/`:
   `POST /api/scores` (`gameId`, `playerName` 3–10 chars en mayúsculas, `score` entero ≥ 0).
 
 **Para añadir un juego:** `@game-planner` (decide cuál y lo registra en
-`references/game-suggestion.-todo.md`) → `/add-game` → spec → `/spec-impl`. Un juego nuevo necesita las
-cuatro piezas: módulo en `lib/games/<juego>/`, entrada en el registry, fila en `games` y su
-aparición en el leaderboard.
+`references/game-suggestion.-todo.md`) → `/add-game` → spec → `/spec-impl` → `@skin-designer` →
+`@mobile-porter`. Un juego nuevo necesita las cuatro piezas: módulo en `lib/games/<juego>/`,
+entrada en el registry, fila en `games` y su aparición en el leaderboard; y no está terminado
+hasta tener sus 3 skins y su entrada en `PAD_MAPS` (sin ella, en móvil sale sin mando y es
+injugable).
 
 ## References
 
