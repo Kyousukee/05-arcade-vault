@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 import type { Game, ScoreRow } from "@/lib/data";
 export default function HallOfFame({
   games,
@@ -10,18 +11,14 @@ export default function HallOfFame({
   scoresByGame: Record<string, ScoreRow[]>;
 }) {
   const [tab, setTab] = useState(games[0].id);
-  const [user, setUser] = useState<{ name: string } | null>(null);
-  useEffect(() => {
-    try {
-      setUser(JSON.parse(localStorage.getItem("av_user") || "null"));
-    } catch {
-      setUser(null);
-    }
-  }, []);
+  const { user } = useAuth();
   const rows = scoresByGame[tab] ?? [];
   const game = games.find((g) => g.id === tab)!;
+  // La identidad es el `user_id` de la fila, no el nombre: un invitado puede
+  // firmar con el nick de cualquiera.
+  const isMine = (row: ScoreRow) => user !== null && row.userId === user.id;
   // Mejor marca del jugador dentro del top que se está mostrando.
-  const you = user ? rows.find((r) => r.name === user.name) : null;
+  const you = user ? rows.find(isMine) : null;
   return (
     <div className="av-hall fade-in">
       <div className="hall-head">
@@ -84,7 +81,11 @@ export default function HallOfFame({
         {rows.map((r, i) => (
           <div
             key={`${r.name}-${i}`}
-            className={"tr" + (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "")}
+            className={
+              "tr" +
+              (i === 0 ? " top1" : i === 1 ? " top2" : i === 2 ? " top3" : "") +
+              (isMine(r) ? " mine" : "")
+            }
             style={{ animationDelay: `${i * 50}ms` }}
           >
             <div className="rk">#{String(r.rank).padStart(2, "0")}</div>

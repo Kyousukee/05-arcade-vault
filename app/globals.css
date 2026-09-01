@@ -258,6 +258,19 @@ a {
 .av-nav .auth-btn {
   margin-left: 16px;
 }
+.av-nav .auth-box {
+  display: flex;
+  align-items: center;
+}
+.av-nav .nick-tag {
+  margin-left: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 8px rgba(0, 245, 255, 0.5);
+}
 .av-nav .hamburger {
   display: none;
 }
@@ -1655,6 +1668,18 @@ a {
   border-color: var(--cyan);
   box-shadow: 0 0 10px rgba(0, 245, 255, 0.35);
 }
+.modal .input-row .player-tag {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--bg);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  letter-spacing: 0.16em;
+}
 .modal .actions {
   display: flex;
   gap: 10px;
@@ -1808,6 +1833,37 @@ a {
   padding: 12px;
   font-size: 9px;
 }
+.auth-link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  transition: color 140ms;
+}
+.auth-link:hover {
+  color: var(--cyan);
+}
+.auth-sent {
+  padding: 18px 16px;
+  border: 1px solid var(--green);
+  background: rgba(0, 255, 136, 0.06);
+  text-align: center;
+}
+.auth-sent p {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.auth-sent strong {
+  color: var(--green);
+  word-break: break-all;
+}
 /* ===== salón ===== */
 .av-hall {
   max-width: 1200px;
@@ -1930,7 +1986,8 @@ a {
   opacity: 0;
   animation: rise 360ms ease-out forwards;
 }
-.hall-table .tr.you {
+.hall-table .tr.you,
+.hall-table .tr.mine {
   background: rgba(245, 255, 0, 0.05);
   border-left: 3px solid var(--yellow);
   padding-left: 15px;

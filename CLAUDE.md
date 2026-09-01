@@ -28,8 +28,11 @@ Uses Spec Driven Design via the `/spec` and `/spec-impl` skills from
 https://github.com/Klerith/fernando-skills (installed with
 `npx skills@latest add Klerith/fernando-skills`). Check for `/spec` and `/spec-impl` slash
 commands / spec docs before implementing features — specs should drive implementation.
-Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla si
-`/spec-impl` crea la rama `spec-NN-slug` automáticamente (hoy `AutoCreateBranch: true`).
+Los specs entregados viven en `specs/NN-*.md`, y los de `@game-jam` en
+`specs/game-jam/<game-id>/NN-*.md`; `specs/.spec-config.yml` controla si `/spec-impl` crea la
+rama automáticamente (hoy `AutoCreateBranch: true`). La rama sale del **nombre del fichero**, no
+de un contador global: el spec de jam `specs/game-jam/ranaria/01-ranaria-jugable.md` se implementó
+en la rama `spec-01-ranaria-jugable`.
 
 ## Skills y agentes
 
@@ -52,7 +55,9 @@ Los specs entregados viven en `specs/NN-*.md`; `specs/.spec-config.yml` controla
   genera 3 juegos, cada uno con su carpeta `specs/game-jam/<game-id>/` y **dos specs completos**
   (`01-<id>-jugable.md` + `02-<id>-extension.md`), en estado borrador y sin preguntar nada. Solo
   escribe dentro de `specs/game-jam/`. Flujo: `@game-jam <tema>` → revisar y aprobar →
-  `/spec-impl-game`.
+  `/spec-impl-game`. El pipeline ya se recorrió entero una vez: la jam produjo `ranaria`, hoy en
+  producción. Quedan 3 candidatos con sus specs escritos y sin implementar: `agujas`, `garfio` y
+  `tunel-neon`.
 - `@skin-designer` (`.claude/agents/`) — mantiene el invariante de que **todo juego tiene al menos
   3 skins**: `clasico` (default, idéntico al look original), `neon` y `retro`. Le entregas un id
   del registry y **escribe el código**: `SkinId`/`GameSkin` en `lib/games/types.ts`,
@@ -110,7 +115,9 @@ No test runner is configured yet.
 
 ### Juegos
 
-Los juegos son TypeScript sobre canvas, portados de `references/Started Games/`:
+Los juegos son TypeScript sobre canvas. La mayoría son **ports** de `references/Started Games/`,
+pero no es el único camino: `ranaria` es diseño original, nacido de un spec de `@game-jam` sin
+fuente vanilla que portar.
 
 - `lib/games/types.ts` — contrato: `GameFactory(opts) => GameInstance` con
   `pause/resume/end/restart/destroy`, y `GameState` publicado al HUD a ~10 Hz (no por frame).
@@ -118,9 +125,14 @@ Los juegos son TypeScript sobre canvas, portados de `references/Started Games/`:
 - `lib/games/registry.ts` — mapa `id → import() dinámico`. El `id` es el mismo de la tabla
   `games` en Supabase. `hasRealGame(id)` decide si `GamePlayer` monta el juego real o el
   simulador de demo.
-- Juegos actuales: `asteroides` (asteroids), `caida` (tetris), `bloque-buster` (arkanoid),
-  `serpentina` (snake). Assets en `public/games/<slug>/`. Puedes verlos aqui C:\Users\Kyousukee\Desktop\ClaudeCode\05-arcade-vault\references\implemented-games.md
-  when you need to check wich games are implemented and how to implement new ones.
+- Juegos actuales (5), `id` → `lib/games/<dir>/`: `asteroides` (asteroids), `caida` (tetris),
+  `bloque-buster` (arkanoid), `serpentina` (snake), `ranaria` (frogger).
+  Solo los que usan sprites tienen assets en `public/games/<slug>/` (`bloque-buster`,
+  `serpentina`); asteroids, tetris y frogger dibujan por primitivas de canvas.
+- **Los dos invariantes están al día: 5/5 juegos con sus 3 skins y con entrada en `PAD_MAPS`.**
+  Fuente: `references/skins-status.md` y `references/mobile-status.md`.
+- `references/implemented-games.md` describe el catálogo con más detalle (categoría, color,
+  descripción), pero **va por detrás del registry** (hoy sin `ranaria`): manda `registry.ts`.
 - `components/GamePlayer.tsx` (client) monta el canvas, dibuja el HUD y al terminar postea a
   `POST /api/scores` (`gameId`, `playerName` 3–10 chars en mayúsculas, `score` entero ≥ 0).
 
@@ -134,7 +146,16 @@ injugable).
 
 ## References
 
-`references/templates/` contiene los mockups originales (HTML/JSX/CSS) de cada pantalla —
-consúltalos como referencia de diseño, no son código de producción.
-`references/Started Games/` contiene los juegos originales en JS vanilla que se portan a
-`lib/games/` — fuente de verdad de la mecánica, no código de producción.
+Nada de `references/` es código de producción.
+
+- `templates/` — mockups originales (HTML/JSX/CSS) de cada pantalla; referencia de diseño.
+- `Started Games/` — juegos originales en JS vanilla que se portan a `lib/games/`; fuente de
+  verdad de la mecánica. `started-games/` es un duplicado en minúsculas del mismo material, más
+  `gamepad-assets/` (arte del mando táctil).
+- `source-assets/` — assets crudos antes de pasar a `public/games/` (p. ej. `snake-assets/`).
+- `resources/` — material suelto de pantallas (`home-about/`, `templates/`).
+
+Memorias de agente (las escriben ellos; léelas antes de encargarles nada):
+
+- `skins-status.md` — `@skin-designer`. `mobile-status.md` — `@mobile-porter`.
+- `game-suggestion.-todo.md` — `@game-planner`. `implemented-games.md` — catálogo de juegos.
