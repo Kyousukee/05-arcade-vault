@@ -23,4 +23,5 @@ export interface ScoreRow {
   name: string;
   score: number;
   date: string; // dd/mm/yyyy
+  userId: string | null; // null = puntaje de invitado
 }

@@ -1,27 +1,13 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-
-interface AvUser {
-  name: string;
-}
-
+import { useAuth } from "@/components/AuthProvider";
 export default function Nav() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<AvUser | null>(null);
-
-  useEffect(() => {
-    try {
-      setUser(JSON.parse(localStorage.getItem("av_user") || "null"));
-    } catch {
-      setUser(null);
-    }
-  }, [pathname]);
-
+  const { user, profile, signOut } = useAuth();
   const isActive = (name: "inicio" | "biblioteca" | "salon" | "about" | "auth") => {
     if (name === "inicio") return pathname === "/";
     if (name === "biblioteca") return pathname === "/biblioteca" || pathname.startsWith("/game");
@@ -29,15 +15,12 @@ export default function Nav() {
     if (name === "about") return pathname === "/about";
     return pathname === "/login";
   };
-
   const close = () => setOpen(false);
-
-  const handleSignOut = () => {
-    localStorage.removeItem("av_user");
-    setUser(null);
+  const handleSignOut = async () => {
+    await signOut();
     router.push("/");
+    router.refresh();
   };
-
   return (
     <>
       <nav className="av-nav">
@@ -67,9 +50,18 @@ export default function Nav() {
           <span>CRÉDITOS · 03</span>
         </div>
         {user ? (
-          <button className="btn ghost auth-btn" onClick={handleSignOut}>
-            {user.name} ▾
-          </button>
+          <div className="auth-box">
+            {profile ? (
+              <span className="nick-tag mono">{profile.nickname}</span>
+            ) : (
+              <Link href="/auth/nickname" className="btn auth-btn">
+                Elige tu nick
+              </Link>
+            )}
+            <button className="btn ghost auth-btn" onClick={handleSignOut}>
+              Salir
+            </button>
+          </div>
         ) : (
           <Link href="/login" className="btn auth-btn">
             Iniciar Sesión
@@ -79,7 +71,6 @@ export default function Nav() {
           ≡
         </button>
       </nav>
-
       <div className={"av-mobile-backdrop" + (open ? " open" : "")} onClick={close}></div>
       <aside className={"av-mobile-panel" + (open ? " open" : "")}>
         <div className="pixel neon-cyan" style={{ fontSize: 11, marginBottom: 16 }}>
@@ -101,7 +92,10 @@ export default function Nav() {
           {user ? "Cuenta" : "Iniciar Sesión"}
         </Link>
         <div style={{ flex: 1 }}></div>
-        <div className="pixel" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
+        <div
+          className="pixel"
+          style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}
+        >
           CRÉDITOS · 03
         </div>
       </aside>

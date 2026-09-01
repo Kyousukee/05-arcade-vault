@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TouchGamepad from "@/components/TouchGamepad";
+import { useAuth } from "@/components/AuthProvider";
 import { hasRealGame, loadGame } from "@/lib/games/registry";
 import { SKIN_IDS, type GameInstance, type GameState, type SkinId } from "@/lib/games/types";
 /** Teclas del juego que no deben scrollear la página mientras está montado. */
@@ -69,14 +70,9 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   const level = isReal ? (gameState?.level ?? 1) : mockLevel;
   const paused = isReal ? gameState?.phase === "paused" : mockPaused;
   const tripleShot = isReal ? (gameState?.tripleShot ?? 0) : 0;
-  useEffect(() => {
-    try {
-      const user = JSON.parse(localStorage.getItem("av_user") || "null");
-      if (user?.name) setName(user.name);
-    } catch {
-      // no session
-    }
-  }, []);
+  // Con sesión el nick del perfil es la identidad: ni se pide ni se edita.
+  const { profile } = useAuth();
+  const displayName = profile?.nickname ?? name;
   // ── Juego real: montaje sobre el canvas ───────────────────────────────────
   useEffect(() => {
     if (!isReal) return;
@@ -271,7 +267,7 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
   }, [isReal]);
   // En el juego real el modal muestra el puntaje congelado al terminar.
   const modalScore = isReal ? finalScore : mockScore;
-  const nameIsValid = name.trim().length >= 3;
+  const nameIsValid = profile !== null || name.trim().length >= 3;
   const saveScore = async () => {
     if (!nameIsValid || saveState === "saving") return;
     setSaveState("saving");
@@ -280,7 +276,12 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
       const res = await fetch("/api/scores", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameId: game.id, playerName: name.trim(), score: modalScore }),
+        // Con sesión el servidor pisa `playerName` con el nick del perfil.
+        body: JSON.stringify({
+          gameId: game.id,
+          playerName: displayName.trim(),
+          score: modalScore,
+        }),
       });
       const data = (await res.json()) as { rank?: number; error?: string };
       if (!res.ok) {
@@ -302,7 +303,7 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
           <div className="hud-stat">
             <div className="l">Jugador</div>
             <div className="v" style={{ color: "var(--ink)" }}>
-              {name || "INVITADO"}
+              {displayName || "INVITADO"}
             </div>
           </div>
           <div className="hud-stat">
@@ -454,12 +455,16 @@ export default function GamePlayer({ game }: { game: { id: string; title: string
             {saveState !== "saved" ? (
               <>
                 <div className="input-row">
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value.toUpperCase().slice(0, 10))}
-                    placeholder="TUS INICIALES"
-                    disabled={saveState === "saving"}
-                  />
+                  {profile ? (
+                    <div className="player-tag mono">{profile.nickname}</div>
+                  ) : (
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value.toUpperCase().slice(0, 10))}
+                      placeholder="TUS INICIALES"
+                      disabled={saveState === "saving"}
+                    />
+                  )}
                   <button
                     className="btn yellow"
                     onClick={saveScore}

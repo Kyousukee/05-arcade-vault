@@ -41,13 +41,20 @@ function toDate(createdAt: string): string {
   const mon = String(d.getUTCMonth() + 1).padStart(2, "0");
   return `${day}/${mon}/${d.getUTCFullYear()}`;
 }
-type ScoreRecord = { game_id: string; player_name: string; score: number; created_at: string };
+type ScoreRecord = {
+  game_id: string;
+  player_name: string;
+  score: number;
+  created_at: string;
+  user_id: string | null;
+};
 function toRows(records: ScoreRecord[]): ScoreRow[] {
   return records.map((r, i) => ({
     rank: i + 1,
     name: r.player_name,
     score: r.score,
     date: toDate(r.created_at),
+    userId: r.user_id,
   }));
 }
 /** Todos los juegos, en el orden de la vitrina. */
@@ -76,7 +83,7 @@ export async function getTopScores(gameId: string, limit = 10): Promise<ScoreRow
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("scores")
-    .select("game_id, player_name, score, created_at")
+    .select("game_id, player_name, score, created_at, user_id")
     .eq("game_id", gameId)
     .order("score", { ascending: false })
     .order("created_at", { ascending: true })
@@ -89,7 +96,7 @@ export async function getAllTopScores(limit = 12): Promise<Record<string, ScoreR
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("scores")
-    .select("game_id, player_name, score, created_at")
+    .select("game_id, player_name, score, created_at, user_id")
     .order("score", { ascending: false })
     .order("created_at", { ascending: true });
   if (error) throw new Error(`No se pudieron cargar los puntajes: ${error.message}`);

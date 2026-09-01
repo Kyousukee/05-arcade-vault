@@ -46,7 +46,7 @@ piden ya figura como `Completo`, dilo y pregunta si quieres rehacer sus skins an
   `grep -n "#[0-9a-fA-F]\{3,8\}\|rgba\?(" lib/games/<dir>/` y no des por cerrado el inventario
   hasta que ese grep no devuelva nada fuera de `skins.ts`.
 - `components/GamePlayer.tsx` — el montaje (`useEffect` con deps `[isReal, game.id]`), el
-  `.hud-actions` donde va el selector, y el patrón de `localStorage` (`av_user`).
+  `.hud-actions` donde va el selector, y el patrón de `localStorage` (`av_skin_<gameId>`).
 - `app/globals.css` — la paleta del vault de la que salen las skins: `--cyan #00f5ff`,
   `--magenta #ff006e`, `--yellow #f5ff00`, `--green #00ff88`, `--bg #0a0a0f`, `--ink #e6e9ff`.
 - `references/resources/home-about/styles.css`, bloque `/* ===== Theme variants ===== */` — prior
@@ -106,7 +106,7 @@ reinicia nada; el siguiente frame ya pinta con la skin nueva).
 > `retro` se ven prácticamente iguales y el trabajo no vale nada.
 
 **4. `components/GamePlayer.tsx` — selector y persistencia.** `useState<SkinId>` sembrado desde
-`localStorage` con la clave **`av_skin_<gameId>`** (por juego, junto al `av_user` existente), y
+`localStorage` con la clave **`av_skin_<gameId>`** (por juego; es la única clave de `localStorage` que usa la app), y
 combo box (`.skin-select`) en `.hud-actions` — disparador con punto de color + rótulo y panel
 `role="listbox"`, no un `<select>` nativo ni una fila de swatches.
 

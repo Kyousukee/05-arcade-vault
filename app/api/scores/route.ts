@@ -18,11 +18,20 @@ export async function POST(request: Request) {
     return Response.json({ error: "Cuerpo de la petición inválido" }, { status: 400 });
   }
   const gameId = typeof body.gameId === "string" ? body.gameId.trim() : "";
-  const playerName = normalizeName(body.playerName);
   const score = body.score;
   if (!gameId) {
     return Response.json({ error: "gameId es obligatorio" }, { status: 400 });
   }
+  const supabase = await createClient();
+  // Con sesión manda el nick del perfil: el `playerName` del cuerpo se ignora.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const profile = user
+    ? (await supabase.from("profiles").select("nickname").eq("id", user.id).maybeSingle()).data
+    : null;
+  const playerName = profile ? profile.nickname : normalizeName(body.playerName);
+  const userId = profile ? user!.id : null;
   if (playerName.length < NAME_MIN) {
     return Response.json(
       { error: `playerName debe tener entre ${NAME_MIN} y ${NAME_MAX} caracteres` },
@@ -32,7 +41,6 @@ export async function POST(request: Request) {
   if (typeof score !== "number" || !Number.isInteger(score) || score < 0) {
     return Response.json({ error: "score debe ser un entero mayor o igual a 0" }, { status: 400 });
   }
-  const supabase = await createClient();
   const { data: game, error: gameError } = await supabase
     .from("games")
     .select("id")
@@ -46,7 +54,7 @@ export async function POST(request: Request) {
   }
   const { data: inserted, error: insertError } = await supabase
     .from("scores")
-    .insert({ game_id: gameId, player_name: playerName, score })
+    .insert({ game_id: gameId, player_name: playerName, score, user_id: userId })
     .select("id")
     .single();
   if (insertError || !inserted) {
