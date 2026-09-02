@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isValidNickname, normalizeNickname } from "@/lib/auth";
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULES, checkPassword } from "@/lib/auth/password";
 /** Traduce al español los errores que devuelve Supabase Auth. */
 function authErrorMessage(message: string): string {
   const m = message.toLowerCase();
@@ -11,8 +12,14 @@ function authErrorMessage(message: string): string {
   if (m.includes("invalid email")) return "Ese correo no es válido.";
   if (m.includes("already registered") || m.includes("already been registered"))
     return "Ya existe una cuenta con ese correo.";
-  if (m.includes("password") && m.includes("6"))
-    return "La contraseña debe tener al menos 6 caracteres.";
+  // Contraseña filtrada (HaveIBeenPwned). Va antes que el caso genérico de
+  // contraseña débil: Supabase también la etiqueta como `weak_password`.
+  if (m.includes("leaked") || m.includes("pwned") || m.includes("data breach"))
+    return "Esa contraseña aparece en filtraciones conocidas. Elige otra distinta.";
+  if (m.includes("easy to guess") || m.includes("weak password") || m.includes("weak_password"))
+    return "Esa contraseña es demasiado débil. Cumple los requisitos de la lista.";
+  if (m.includes("password should"))
+    return `La contraseña debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres, con minúscula, mayúscula, número y símbolo.`;
   if (m.includes("rate limit") || m.includes("too many"))
     return "Demasiados intentos. Espera un momento y vuelve a probar.";
   return "No se pudo completar la operación. Inténtalo de nuevo.";
@@ -119,6 +126,10 @@ export default function LoginCard() {
         setError("Ese nick ya existe. Elige otro.");
         return;
       }
+      if (!passCheck.valid) {
+        setError("La contraseña no cumple todos los requisitos.");
+        return;
+      }
     }
     setSending(true);
     if (tab === "in") await signIn();
@@ -165,6 +176,9 @@ export default function LoginCard() {
     setTab(next);
     setError(null);
   };
+  // Solo en registro: una cuenta antigua puede tener una contraseña que ya no
+  // cumple el formato nuevo, y bloquearle el acceso sería un bug.
+  const passCheck = checkPassword(pass);
   const nickHint: Record<NickCheck, string> = {
     idle: "3–10 caracteres · letras y números",
     checking: "COMPROBANDO…",
@@ -323,13 +337,27 @@ export default function LoginCard() {
                   placeholder="••••••••"
                   autoComplete={tab === "in" ? "current-password" : "new-password"}
                 />
+                {tab === "up" && (
+                  <ul className="password-rules mono">
+                    {PASSWORD_RULES.map((rule) => {
+                      const ok = rule.test(pass);
+                      return (
+                        <li key={rule.id} className={ok ? "ok" : ""}>
+                          <span aria-hidden="true">{ok ? "▪" : "▫"}</span> {rule.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
               <button
                 className="btn lg"
                 type="submit"
                 style={{ width: "100%", marginTop: 8 }}
                 disabled={
-                  sending || (tab === "up" && (nickCheck === "taken" || nickCheck === "invalid"))
+                  sending ||
+                  (tab === "up" &&
+                    (nickCheck === "taken" || nickCheck === "invalid" || !passCheck.valid))
                 }
               >
                 {tab === "in"

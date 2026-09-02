@@ -1807,6 +1807,20 @@ a {
   border-color: var(--cyan);
   box-shadow: 0 0 12px rgba(0, 245, 255, 0.35);
 }
+/* Requisitos de contraseña bajo el campo, en registro y en el reset. */
+.password-rules {
+  display: grid;
+  gap: 3px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+}
+.password-rules li.ok {
+  color: var(--green);
+}
 .auth-divider {
   display: flex;
   align-items: center;

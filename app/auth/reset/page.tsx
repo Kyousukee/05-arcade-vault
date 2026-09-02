@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PASSWORD_RULES, checkPassword } from "@/lib/auth/password";
 type Phase = "checking" | "ready" | "invalid" | "saved";
 export default function ResetPassword() {
   const router = useRouter();
@@ -29,12 +30,13 @@ export default function ResetPassword() {
       active = false;
     };
   }, [supabase]);
+  const passCheck = checkPassword(pass);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
     setError(null);
-    if (pass.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+    if (!passCheck.valid) {
+      setError("La contraseña no cumple todos los requisitos.");
       return;
     }
     setSaving(true);
@@ -106,12 +108,22 @@ export default function ResetPassword() {
                   autoComplete="new-password"
                   autoFocus
                 />
+                <ul className="password-rules mono">
+                  {PASSWORD_RULES.map((rule) => {
+                    const ok = rule.test(pass);
+                    return (
+                      <li key={rule.id} className={ok ? "ok" : ""}>
+                        <span aria-hidden="true">{ok ? "▪" : "▫"}</span> {rule.label}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
               <button
                 className="btn lg"
                 type="submit"
                 style={{ width: "100%", marginTop: 8 }}
-                disabled={saving}
+                disabled={saving || !passCheck.valid}
               >
                 {saving ? "GUARDANDO…" : "GUARDAR CONTRASEÑA"}
               </button>
