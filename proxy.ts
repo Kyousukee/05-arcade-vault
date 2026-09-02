@@ -1,20 +1,16 @@
+import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
-/**
- * Convención `proxy` de Next 16 (antes `middleware`). Solo refresca la sesión
- * de Supabase; ninguna ruta se protege aquí.
- */
-export async function proxy(request: NextRequest) {
-  return updateSession(request);
+import { securityHeaders } from "@/lib/security-headers";
+
+// This function can be marked `async` if using `await` inside
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+  for (const { key, value } of securityHeaders) {
+    response.headers.set(key, value);
+  }
+  return response;
 }
+
 export const config = {
-  matcher: [
-    /*
-     * Todas las rutas menos:
-     * - _next/static, _next/image, favicon.ico
-     * - /games/** (assets de los juegos servidos desde public/games)
-     * - archivos de imagen y audio
-     */
-    "/((?!_next/static|_next/image|favicon.ico|games/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|ico|mp3|ogg|wav)$).*)",
-  ],
+  matcher: "/((?!_next/static|_next/image|favicon.ico).*)",
 };
